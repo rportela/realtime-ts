@@ -1,4 +1,4 @@
-import { JsonRpc } from "../common/JsonRpc";
+import JsonRpc from "../common/JsonRpc";
 
 export class RealtimeClient extends JsonRpc {
   private socket: WebSocket;
@@ -7,12 +7,12 @@ export class RealtimeClient extends JsonRpc {
     super();
     this.socket = new WebSocket(url, protocols);
     this.socket.onmessage = this.onMessage;
-    this.socket.onopen = this.onConnect;
+    this.socket.onopen = this.onOpen;
     this.socket.onerror = this.onError;
     this.socket.onclose = this.onDisconnect;
   }
 
-  private onConnect = (ev: Event) => this.listeners.notify("CONNECT", ev);
+  private onOpen = (ev: Event) => this.listeners.notify("CONNECT", ev);
   private onError = (ev: Event) => this.listeners.notify("ERROR", ev);
   private onDisconnect = (ev: Event) => this.listeners.notify("DISCONNECT", ev);
   private onMessage = (ev: MessageEvent) => {
@@ -24,6 +24,5 @@ export class RealtimeClient extends JsonRpc {
   protected jsonSend(obj: any) {
     const json = JSON.stringify(obj);
     this.socket.send(json);
-    
   }
 }

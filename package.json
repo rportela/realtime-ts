@@ -20,5 +20,10 @@
   "bugs": {
     "url": "https://github.com/rportela/realtime-ts/issues"
   },
-  "homepage": "https://github.com/rportela/realtime-ts#readme"
+  "homepage": "https://github.com/rportela/realtime-ts#readme",
+  "dependencies": {
+    "@types/node": "^14.0.23",
+    "@types/ws": "^7.2.6",
+    "ws": "^7.3.1"
+  }
 }

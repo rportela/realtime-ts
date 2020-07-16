@@ -1,96 +1,15 @@
 import { Handlers, Handler } from "./Handlers";
 import { Listeners, Listener } from "./Listeners";
+import JsonRpcRequest from "./JsonRpcRequest";
+import JsonRpcResponse from "./JsonRpcResponse";
+import JsonRpcPendingRequest from "./JsonRpcPendingRequest";
 
 /**
- * A rpc call is represented by sending a Request object to a Server. The Request object has the following members:
+ * Wraps all functionality of JSON RPC.
+ * Handlers for standard method calls and listeners for remote notifications.
+ * @author Rodrigo Portela
  */
-export interface JsonRpcRequest {
-  /**
-   * A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
-   */
-  jsonrpc: string;
-  /**
-   * A String containing the name of the method to be invoked.
-   * Method names that begin with the word rpc followed by a period character (U+002E or ASCII 46) are
-   * reserved for rpc-internal methods and extensions and MUST NOT be used for anything else.
-   */
-  method: string;
-
-  /**
-   * A Structured value that holds the parameter values to be used during the invocation of the method. This member MAY be omitted.s
-   */
-  params?: any[];
-
-  /**
-   * An identifier established by the Client that MUST contain a String, Number, or NULL value if included.
-   * If it is not included it is assumed to be a notification.
-   * The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts.
-   */
-  id?: string | number;
-}
-
-/**
- * When a rpc call encounters an error, the Response Object MUST contain the error member with a value that is a Object with the following members:
- */
-export interface JsonRpcError {
-  /**
-   * A Number that indicates the error type that occurred.
-   * This MUST be an integer.
-   */
-  code: number;
-  /**
-   * A String providing a short description of the error.
-   * The message SHOULD be limited to a concise single sentence.
-   */
-  message: string;
-  /**
-   * A Primitive or Structured value that contains additional information about the error.
-   * This may be omitted.
-   * The value of this member is defined by the Server (e.g. detailed error information, nested errors etc.).
-   */
-  data?: any;
-}
-/**
- * When a rpc call is made, the Server MUST reply with a Response, except for in the case of Notifications.
- * The Response is expressed as a single JSON Object, with the following members:
- */
-export interface JsonRpcResponse {
-  /**
-   * A String specifying the version of the JSON-RPC protocol. MUST be exactly "2.0".
-   */
-  jsonrpc: string;
-
-  /**
-   * This member is REQUIRED on success.
-   * This member MUST NOT exist if there was an error invoking the method.
-   * The value of this member is determined by the method invoked on the Server.
-   */
-  result?: any;
-
-  /**
-   * This member is REQUIRED on error.
-   * This member MUST NOT exist if there was no error triggered during invocation.
-   * The value for this member MUST be an Object as defined in section 5.1.
-   */
-  error?: JsonRpcError;
-
-  /**
-   * An identifier established by the Client that MUST contain a String, Number, or NULL value if included.
-   * The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts.
-   */
-  id: string | number;
-}
-
-export class JsonRpcPendingRequest implements JsonRpcRequest {
-  jsonrpc: string = "2.0";
-  method: string;
-  params?: any[];
-  id?: string | number;
-  resolve: (result: any) => void;
-  reject: (error: JsonRpcError) => void;
-}
-
-export abstract class JsonRpc {
+export default abstract class JsonRpc {
   handlers: Handlers;
   listeners: Listeners;
   pending: any = {};
@@ -103,17 +22,31 @@ export abstract class JsonRpc {
     this.listeners = listeners;
   }
 
+  /**
+   * Implement this method on the client or on the server to send JSON encoded messages.
+   * @param obj
+   */
   protected abstract jsonSend(obj: any);
 
+  /**
+   * Processes an array of requests by calling the processRequest for each member of the array.
+   * @param requests
+   */
   private processRequestArray(requests: JsonRpcRequest[]) {
-    requests.forEach((req) => this.processRequest(req));
+    requests.forEach(this.processRequest);
   }
 
-  private processRequest(request: JsonRpcRequest) {
+  /**
+   * Processes a request. Either a standard method call or a notification.
+   * If the request is a standard method call, an appropriate JsonRpcResponse is sent back to the caller.
+   * If the request is a notification, the listeners are invoked but no response is sent back to the caller.
+   * @param request
+   */
+  private processRequest = (request: JsonRpcRequest) => {
     if (request.id) {
       this.handlers
         .invoke(request.method, request.params)
-        .then((result) => {
+        .then((result: any) => {
           const resMsg: JsonRpcResponse = {
             id: request.id,
             jsonrpc: request.jsonrpc,
@@ -121,21 +54,26 @@ export abstract class JsonRpc {
           };
           this.jsonSend(resMsg);
         })
-        .catch((error: Error) => {
+        .catch((error: any) => {
           const resMsg: JsonRpcResponse = {
             id: request.id,
             jsonrpc: request.jsonrpc,
             error: {
               code: -1,
-              message: error.message,
+              message: error.message || error,
               data: error.stack,
             },
           };
           this.jsonSend(resMsg);
         });
     } else this.listeners.notify(request.method, request.params);
-  }
+  };
 
+  /**
+   * Processes the response of a standard method call.
+   * It removes the pending request from the bag and either resolves or rejects the promise depending on the presence of an error.
+   * @param response
+   */
   private processResponse(response: JsonRpcResponse) {
     const pending: JsonRpcPendingRequest = this.pending[response.id];
     if (pending) {
@@ -145,12 +83,22 @@ export abstract class JsonRpc {
     }
   }
 
+  /**
+   * Receives an arbitrary json message from a remote and translates it to a standard method call, a notification or a response from a call.
+   * @param message
+   */
   receive(message: any) {
     if (Array.isArray(message)) this.processRequestArray(message);
     else if (message.method) this.processRequest(message);
     else this.processResponse(message);
   }
 
+  /**
+   * Performs a RPC call.
+   * Creates a new pending JSON RPC request, stores it on the bag and sends the encoded json on the pipe.
+   * @param method
+   * @param params
+   */
   call(method: string, ...params: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const req = new JsonRpcPendingRequest();
@@ -164,6 +112,12 @@ export abstract class JsonRpc {
     });
   }
 
+  /**
+   * Performs a RPC notification. That is a RPC request with no message id attached to it.
+   * It simply creates the request and sends the encoded json on the pipe.
+   * @param method
+   * @param params
+   */
   notify(method: string, ...params: any): void {
     const req: JsonRpcRequest = {
       method: method,
@@ -173,22 +127,42 @@ export abstract class JsonRpc {
     this.jsonSend(req);
   }
 
+  /**
+   * This method adds a listener that can be remotely invoked by name.
+   * @param method
+   * @param listener
+   */
   addListener(method: string, listener: Listener) {
     this.listeners.addListener(method, listener);
   }
 
+  /**
+   * This method removes a listener from the listener collection.
+   * @param method
+   * @param listener
+   */
   removeListener(method: string, listener: Listener) {
     this.listeners.removeListener(method, listener);
   }
 
+  /**
+   * This method sets the handler of a specific name, that can be invoked from a remote, by name.
+   */
   setHandler(method: string, handler: Handler) {
     this.handlers.setHandler(method, handler);
   }
 
+  /**
+   * This method deletes the name, preventing any remotes from successfully calling the method.
+   * @param method
+   */
   removeHandler(method: string) {
     this.handlers.removeHandler(method);
   }
 
+  /**
+   * A static helper method to create time ascending, unique ids.
+   */
   static createId(): string {
     return new Date().getTime().toString(36) + Math.random().toString(36);
   }

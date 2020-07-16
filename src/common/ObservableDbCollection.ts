@@ -1,6 +1,6 @@
 import { DbCollectionSchema } from "../common/DbSchema";
 import { Listener, Listeners } from "../common/Listeners";
-import BrowserDbCollection from "./BrowserDbCollection";
+import { DbCollection } from "./DbCollection";
 
 export enum ObservableDbCollectionEvent {
   COLLECTION_ERROR = "COLLECTION_ERROR",
@@ -24,9 +24,9 @@ export interface ObservableDbCollectionDeleteEvent {
 
 export class ObservableDbCollection<T> {
   private listeners: Listeners;
-  private collection: BrowserDbCollection<T>;
+  private collection: DbCollection<T>;
 
-  constructor(collection: BrowserDbCollection<T>) {
+  constructor(collection: DbCollection<T>) {
     this.collection = collection;
     this.listeners = this.listeners;
   }
@@ -50,13 +50,13 @@ export class ObservableDbCollection<T> {
    */
   async add(record: T, key?: IDBValidKey): Promise<IDBValidKey> {
     return this.collection
-      .add(record)
-      .then((key: IDBValidKey) => {
+      .add(record, key)
+      .then((newKey: IDBValidKey) => {
         const res: ObservableDbCollectionSaveEvent = {
           record: record,
           collection: this.collection.name,
           keyPath: this.collection.keyPath,
-          key: key,
+          key: newKey,
         };
         this.listeners.notify(ObservableDbCollectionEvent.COLLECTION_PUT, res);
         return res;
@@ -269,6 +269,7 @@ export class ObservableDbCollection<T> {
   ): Promise<undefined> {
     return this.collection.forEachKey(fn, query, direction);
   }
+
   addListener(event: ObservableDbCollectionEvent, listener: Listener) {
     this.listeners.addListener(event, listener);
   }
