@@ -1,64 +1,28 @@
-/**
- * A standard handler. A function that receives an arbitrary number of parameters.
- * @author Rodrigo Portela
- */
 export interface Handler {
-  (...params: any): any;
+  (...params: any[]): any;
 }
 
-/**
- * This class wraps standard handler functionality.
- * Your are expected to associate your functions to well known names that can be transmitted over the network.
- * Typically, names are all caps and exposed as enums in typescript but feel free to use any string you like.
- * @author Rodrigo Portela
- */
 export class Handlers {
   private handlers: any = {};
-
-  /**
-   * Sets a handler for a specific name. This can later be called by the invoke method.
-   * @param name
-   * @param handler
-   */
-  setHandler(name: string, handler: Handler) {
-    this.handlers[name] = handler;
+  setHandler(method: string, handler: Handler) {
+    this.handlers[method] = handler;
   }
-
-  /**
-   * Gets the handler of a specific name or undefined if no handler has been set for that name.
-   * @param name
-   */
-  getHandler(name: string): Handler | undefined {
-    return this.handlers[name];
+  removeHandler(method: string) {
+    delete this.handlers[method];
   }
-
-  /**
-   * Deletes the handler of a specific name.
-   * @param name
-   */
-  removeHandler(name: string) {
-    delete this.handlers[name];
-  }
-
-  /**
-   * Invokes the handler with a specific name passing the parameters.
-   * If no handler is set for that name, the promise rejects with and Unknown Handler error.
-   * @param name
-   * @param params
-   */
-  invoke(name: string, ...params: any): Promise<any> {
+  invoke(method: string, ...params: any[]): Promise<any> {
     return new Promise((resolve, reject) => {
-      const handler: Handler = this.handlers[name];
+      const handler: Handler = this.handlers[method];
       if (handler) {
         try {
           const result = handler(params);
           if (result && result.then) result.then(resolve).catch(reject);
           else resolve(result);
-        } catch (e) {
-          reject(e);
+        } catch (err) {
+          reject(err);
         }
       } else {
-        reject(new Error("Unknown handler " + name));
+        reject(new Error("No handler found for " + method));
       }
     });
   }

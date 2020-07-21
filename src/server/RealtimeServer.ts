@@ -1,12 +1,22 @@
 import * as http from "http";
 import * as https from "https";
 import * as WebSocket from "ws";
-import RpcServerClient from "./RealtimeServerClient";
-import { Handlers, Handler } from "../common/Handlers";
-import { Listeners, Listener } from "../common/Listeners";
+import { Handlers } from "../common/Handlers";
+import { Listeners } from "../common/Listeners";
+import {
+  default as RealtimeServerClient,
+  default as RpcServerClient,
+} from "./RealtimeServerClient";
 import RealtimeServerEventType from "./RealtimeServerEventType";
 
-export default class RealtimeServer {
+export interface RealtimeServerListener {
+  (client: RealtimeServerClient, params?: any);
+}
+export interface RealtimeServerHandler {
+  (client: RealtimeServerClient, params?: any): any;
+}
+
+export class RealtimeServer {
   private server: http.Server | https.Server;
   private socket: WebSocket.Server;
   private clients: RpcServerClient[] = [];
@@ -32,13 +42,21 @@ export default class RealtimeServer {
     ws.onclose = () => this.unregisterClient(client);
     this.clients.push(client);
     console.log("got a new client", client.info);
-    this.listeners.notify(RealtimeServerEventType.CLIENT_CONNECT, client);
+    this.listeners.notify(
+      RealtimeServerEventType.CLIENT_CONNECT,
+      client,
+      client.info
+    );
   };
 
   private unregisterClient(client: RpcServerClient) {
     const idx = this.clients.indexOf(client);
     if (idx >= 0) this.clients.splice(idx, 1);
-    this.listeners.notify(RealtimeServerEventType.CLIENT_DISCONNECT, client);
+    this.listeners.notify(
+      RealtimeServerEventType.CLIENT_DISCONNECT,
+      client,
+      client.info
+    );
   }
 
   private onHttpRequest: http.RequestListener = (
@@ -49,20 +67,35 @@ export default class RealtimeServer {
     res.end();
   };
 
-  setHandler(name: string, handler: Handler) {
+  setHandler<T>(name: string, handler: RealtimeServerHandler) {
     this.handlers.setHandler(name, handler);
   }
   removeHandler(name: string) {
     this.handlers.removeHandler(name);
   }
-  addListener(name: string, listener: Listener) {
+
+  addListener<T>(name: string, listener: RealtimeServerListener) {
     this.listeners.addListener(name, listener);
   }
-  removeListener(name: string, listener: Listener) {
+  removeListener<T>(name: string, listener: RealtimeServerListener) {
     this.listeners.removeListener(name, listener);
   }
 
   listen(port?: number) {
-    this.server.listen(port || process.env.port);
+    const p = port || process.env.port;
+    this.server.listen(p);
+    console.log("Server listening on", p, "?", this.server.listening);
+  }
+
+  broadcast(message: WebSocket.Data, ignore?: RealtimeServerClient) {
+    this.clients.forEach((client) => {
+      if (client !== ignore) client.send(message);
+    });
+  }
+
+  notifyClients(method: string, params: any, ignore?: RealtimeServerClient) {
+    this.clients.forEach((client) => {
+      if (client !== ignore) client.notify(method, params);
+    });
   }
 }

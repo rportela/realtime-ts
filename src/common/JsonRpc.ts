@@ -1,8 +1,7 @@
-import { Handlers, Handler } from "./Handlers";
-import { Listeners, Listener } from "./Listeners";
+import JsonRpcPendingRequest from "./JsonRpcPendingRequest";
 import JsonRpcRequest from "./JsonRpcRequest";
 import JsonRpcResponse from "./JsonRpcResponse";
-import JsonRpcPendingRequest from "./JsonRpcPendingRequest";
+import JsonRpcError from "./JsonRpcError";
 
 /**
  * Wraps all functionality of JSON RPC.
@@ -10,91 +9,14 @@ import JsonRpcPendingRequest from "./JsonRpcPendingRequest";
  * @author Rodrigo Portela
  */
 export default abstract class JsonRpc {
-  handlers: Handlers;
-  listeners: Listeners;
-  pending: any = {};
+  private pending: any = {};
 
-  constructor(
-    handlers: Handlers = new Handlers(),
-    listeners: Listeners = new Listeners()
-  ) {
-    this.handlers = handlers;
-    this.listeners = listeners;
-  }
+  protected abstract sendJson(json: string);
+  protected abstract handleCall(method: string, params: any): Promise<any>;
+  protected abstract handleNotification(method: string, params: any): void;
 
   /**
-   * Implement this method on the client or on the server to send JSON encoded messages.
-   * @param obj
-   */
-  protected abstract jsonSend(obj: any);
-
-  /**
-   * Processes an array of requests by calling the processRequest for each member of the array.
-   * @param requests
-   */
-  private processRequestArray(requests: JsonRpcRequest[]) {
-    requests.forEach(this.processRequest);
-  }
-
-  /**
-   * Processes a request. Either a standard method call or a notification.
-   * If the request is a standard method call, an appropriate JsonRpcResponse is sent back to the caller.
-   * If the request is a notification, the listeners are invoked but no response is sent back to the caller.
-   * @param request
-   */
-  private processRequest = (request: JsonRpcRequest) => {
-    if (request.id) {
-      this.handlers
-        .invoke(request.method, request.params)
-        .then((result: any) => {
-          const resMsg: JsonRpcResponse = {
-            id: request.id,
-            jsonrpc: request.jsonrpc,
-            result: result,
-          };
-          this.jsonSend(resMsg);
-        })
-        .catch((error: any) => {
-          const resMsg: JsonRpcResponse = {
-            id: request.id,
-            jsonrpc: request.jsonrpc,
-            error: {
-              code: -1,
-              message: error.message || error,
-              data: error.stack,
-            },
-          };
-          this.jsonSend(resMsg);
-        });
-    } else this.listeners.notify(request.method, request.params);
-  };
-
-  /**
-   * Processes the response of a standard method call.
-   * It removes the pending request from the bag and either resolves or rejects the promise depending on the presence of an error.
-   * @param response
-   */
-  private processResponse(response: JsonRpcResponse) {
-    const pending: JsonRpcPendingRequest = this.pending[response.id];
-    if (pending) {
-      delete this.pending[response.id];
-      if (response.error) pending.reject(response.error);
-      else pending.resolve(response.result);
-    }
-  }
-
-  /**
-   * Receives an arbitrary json message from a remote and translates it to a standard method call, a notification or a response from a call.
-   * @param message
-   */
-  receive(message: any) {
-    if (Array.isArray(message)) this.processRequestArray(message);
-    else if (message.method) this.processRequest(message);
-    else this.processResponse(message);
-  }
-
-  /**
-   * Performs a RPC call.
+ a  * Performs a RPC call.
    * Creates a new pending JSON RPC request, stores it on the bag and sends the encoded json on the pipe.
    * @param method
    * @param params
@@ -108,56 +30,108 @@ export default abstract class JsonRpc {
       req.reject = reject;
       req.params = params;
       this.pending[req.id] = req;
-      this.jsonSend(req);
+      const json = JSON.stringify(req);
+      this.sendJson(json);
     });
   }
 
-  /**
-   * Performs a RPC notification. That is a RPC request with no message id attached to it.
-   * It simply creates the request and sends the encoded json on the pipe.
-   * @param method
-   * @param params
-   */
-  notify(method: string, ...params: any): void {
+  notify(method: string, params?: any): void {
     const req: JsonRpcRequest = {
       method: method,
-      params: params,
       jsonrpc: "2.0",
+      params: params,
     };
-    this.jsonSend(req);
+    const json = JSON.stringify(req);
+    this.sendJson(json);
   }
 
   /**
-   * This method adds a listener that can be remotely invoked by name.
-   * @param method
-   * @param listener
+   * Receives an arbitrary json message from a remote and translates it to a standard method call, a notification or a response from a call.
+   * @param message
    */
-  addListener(method: string, listener: Listener) {
-    this.listeners.addListener(method, listener);
+  protected receiveJson(json: string) {
+    const message: any = JSON.parse(json);
+    if (Array.isArray(message)) {
+      (message as Array<JsonRpcRequest>).forEach(this.receiveRequest);
+    } else if (message.method) {
+      this.receiveRequest(message);
+    } else {
+      this.receiveResponse(message);
+    }
   }
 
   /**
-   * This method removes a listener from the listener collection.
-   * @param method
-   * @param listener
+   * Processes the response of a standard method call.
+   * It removes the pending request from the bag and either resolves or rejects the promise depending on the presence of an error.
+   * @param response
    */
-  removeListener(method: string, listener: Listener) {
-    this.listeners.removeListener(method, listener);
+  private receiveResponse(response: JsonRpcResponse) {
+    const pending: JsonRpcPendingRequest = this.pending[response.id];
+    if (pending) {
+      delete this.pending[response.id];
+      if (response.error) pending.reject(response.error);
+      else pending.resolve(response.result);
+    }
   }
 
   /**
-   * This method sets the handler of a specific name, that can be invoked from a remote, by name.
+   * Processes a request. Either a standard method call or a notification.
+   * If the request is a standard method call, an appropriate JsonRpcResponse is sent back to the caller.
+   * If the request is a notification, the listeners are invoked but no response is sent back to the caller.
+   * @param request
    */
-  setHandler(method: string, handler: Handler) {
-    this.handlers.setHandler(method, handler);
+  private receiveRequest = (request: JsonRpcRequest) => {
+    if (request.id) {
+      try {
+        const res = this.handleCall(request.method, request.params);
+        const p: Promise<any> = res.then ? res : Promise.resolve(res);
+        p.then((result) => this.respondSuccess(request, result)).catch((err) =>
+          this.respondError(request, err)
+        );
+      } catch (err) {
+        this.respondError(request, err);
+      }
+    } else {
+      try {
+        this.handleNotification(request.method, request.params);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  /**
+   * Encodes a JSON response to send through the pipe with a specific result.
+   * @param req
+   * @param result
+   */
+  protected respondSuccess(req: JsonRpcRequest, result: any) {
+    const msg: JsonRpcResponse = {
+      id: req.id,
+      jsonrpc: req.jsonrpc,
+      result: result,
+    };
+    const json = JSON.stringify(msg);
+    this.sendJson(json);
   }
 
   /**
-   * This method deletes the name, preventing any remotes from successfully calling the method.
-   * @param method
+   * Encodes a JSON response to sen through the pipe with a specific error.
+   * @param req
+   * @param err
    */
-  removeHandler(method: string) {
-    this.handlers.removeHandler(method);
+  protected respondError(req: JsonRpcRequest, err: Error) {
+    const msg: JsonRpcResponse = {
+      id: req.id,
+      jsonrpc: req.jsonrpc,
+      error: {
+        code: -1,
+        message: err.message,
+        data: err.stack,
+      } as JsonRpcError,
+    };
+    const json = JSON.stringify(msg);
+    this.sendJson(json);
   }
 
   /**
