@@ -23,7 +23,7 @@ export class Listeners {
   notify(method: string, ...params: any[]) {
     const arr = this.listeners[method];
     if (arr) {
-      arr.forEach((listener) => {
+      arr.forEach((listener: Listener) => {
         try {
           listener(params);
         } catch (e) {

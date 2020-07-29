@@ -6,7 +6,7 @@ const DbSchema_1 = require("../common/DbSchema");
  * This API uses indexes to enable high-performance searches of this data.
  * While Web Storage is useful for storing smaller amounts of data, it is less useful for storing larger amounts of structured data.
  * IndexedDB provides a solution.
- *
+ * @author Rodrigo Portela <rodrigo.portela@gmail.com>
  */
 class BrowserDb {
     constructor(schema) {
@@ -34,9 +34,16 @@ class BrowserDb {
             };
         });
     }
+    /**
+     * Finds a collection schema by name.
+     * @param collection
+     */
     getCollectionSchema(collection) {
         return this.schema.collections.find((c) => c.name === collection);
     }
+    /**
+     * Deletes the database.
+     */
     dropDatabase() {
         return new Promise((resolve, reject) => {
             try {
@@ -52,6 +59,10 @@ class BrowserDb {
             }
         });
     }
+    /**
+     * Clears all records of a specific collection.
+     * @param name
+     */
     dropCollection(name) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             const req = db
@@ -66,6 +77,12 @@ class BrowserDb {
             });
         }));
     }
+    /**
+     * Adds or updates a record in store with the given value and key.
+     * If the store uses in-line keys and key is specified a "DataError" DOMException will be thrown.
+     * @param collection
+     * @param record
+     */
     add(collection, record) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             DbSchema_1.ensureId(this.getCollectionSchema(collection), record);
@@ -83,6 +100,11 @@ class BrowserDb {
             });
         }));
     }
+    /**
+     * Any existing record with the key will be replaced.
+     * @param collection
+     * @param record
+     */
     put(collection, record) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             DbSchema_1.ensureId(this.getCollectionSchema(collection), record);
@@ -100,6 +122,13 @@ class BrowserDb {
             });
         }));
     }
+    /**
+     * Deletes records in store with the given key or in the given key range in query.
+     * If successful, request's result will be undefined.
+     *
+     * @param collection
+     * @param key
+     */
     delete(collection, key) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             const req = db
@@ -115,16 +144,22 @@ class BrowserDb {
             });
         }));
     }
+    /**
+     * Retrieves the number of records matching the given key or key range in query.
+     * @param collection
+     * @param filter
+     */
     count(collection, filter) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             const store = db.transaction(collection).objectStore(collection);
             if (filter) {
                 const req = store.openCursor();
+                const test = filter.test;
                 let count = 0;
                 req.onsuccess = () => {
                     if (req.result) {
                         const cursor = req.result;
-                        if (filter.test(cursor.value))
+                        if (test(cursor.value))
                             count++;
                         cursor.continue();
                     }
@@ -141,9 +176,17 @@ class BrowserDb {
             }
         }));
     }
+    /**
+     * Gets the first record matching a query.
+     * @param params
+     */
     first(params) {
         return this.select(params).then((records) => records.length > 0 ? records[0] : undefined);
     }
+    /**
+     * Gets all the records matching a query.
+     * @param params
+     */
     select(params) {
         return this.open.then((db) => new Promise((resolve, reject) => {
             const where = params.where;
@@ -152,12 +195,13 @@ class BrowserDb {
                 .objectStore(params.collection);
             if (where) {
                 const req = store.openCursor();
+                const test = where.test;
                 const records = [];
                 req.onsuccess = () => {
                     if (req.result) {
                         const cursor = req.result;
                         const value = cursor.value;
-                        if (where.test(value))
+                        if (test(value))
                             records.push(value);
                         cursor.continue();
                     }
@@ -182,15 +226,28 @@ class BrowserDb {
             return records;
         }));
     }
+    /**
+     * Applies a function to all records matching a query.
+     * @param params
+     */
     forEach(params) {
         return this.select(params).then((records) => records.forEach(params.iterator));
     }
+    /**
+     * Gets the database schema.
+     */
     getSchema() {
         return this.schema;
     }
+    /**
+     * Gets the name of the database.
+     */
     getName() {
         return this.schema.name;
     }
+    /**
+     * Gets the version of the database.
+     */
     getVersion() {
         return this.schema.version;
     }

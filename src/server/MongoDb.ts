@@ -150,6 +150,7 @@ export default class MongoDb implements Db {
         if (params.orderBy.next)
           throw new Error("Mongo only allows you to sort by a single field");
         if (params.offset) cursor.skip(params.offset);
+        if (params.limit) cursor.limit(params.limit);
         return cursor;
       });
   }

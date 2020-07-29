@@ -13,7 +13,7 @@ export default class ObservableDb implements Db {
     constructor(db: Db);
     getSchema(): DbSchema;
     getName(): string;
-    getVersion(): number;
+    getVersion(): number | undefined;
     getCollectionSchema(collection: string): DbCollectionSchema;
     dropDatabase(): Promise<DbDatabaseDrop>;
     dropCollection(name: string): Promise<DbCollectionDrop>;

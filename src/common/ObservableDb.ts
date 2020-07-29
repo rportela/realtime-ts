@@ -36,7 +36,7 @@ export default class ObservableDb implements Db {
   getName(): string {
     return this.db.getName();
   }
-  getVersion(): number {
+  getVersion(): number | undefined {
     return this.db.getVersion();
   }
   getCollectionSchema(collection: string): DbCollectionSchema {

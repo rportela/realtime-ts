@@ -34,14 +34,14 @@ export interface DbSchema {
  * @param record
  * @param keyPath
  */
-export declare const getRecordKey: (record: any, keyPath: string | string[]) => IDBValidKey | IDBValidKey[];
+export declare const getRecordKey: (record: any, keyPath: string | string[]) => DbKey | DbKey[];
 /**
  * Utility to set a key or a key array to a record using the keyPath.
  * @param record
  * @param keyPath
  * @param key
  */
-export declare const setRecordKey: (record: any, keyPath: string | string[], key: IDBValidKey | IDBValidKey[]) => void;
+export declare const setRecordKey: (record: any, keyPath: string | string[], key: DbKey | DbKey[]) => void;
 export interface DbQueryParameters {
     collection: string;
     where?: DbFilter;

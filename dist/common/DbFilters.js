@@ -27,39 +27,39 @@ var DbFilterOperation;
 })(DbFilterOperation = exports.DbFilterOperation || (exports.DbFilterOperation = {}));
 class DbFilterTerm {
     constructor(name, comparison, value) {
+        this.test = (record) => {
+            switch (this.comparison) {
+                case DbFilterComparison.EQUAL_TO:
+                    return record[this.name] === this.value;
+                case DbFilterComparison.NOT_EQUAL_TO:
+                    return record[this.name] !== this.value;
+                case DbFilterComparison.GREATER_THAN:
+                    return record[this.name] > this.value;
+                case DbFilterComparison.GREATER_OR_EQUAL:
+                    return record[this.name] >= this.value;
+                case DbFilterComparison.LOWER_THAN:
+                    return record[this.name] < this.value;
+                case DbFilterComparison.LOWER_OR_EQUAL:
+                    return record[this.name] <= this.value;
+                case DbFilterComparison.IN:
+                    return this.value.indexOf(record[this.name]) >= 0;
+                case DbFilterComparison.NOT_IN:
+                    return this.value.indexOf(record[this.name]) < 0;
+                case DbFilterComparison.LIKE:
+                    if (!(this.value instanceof RegExp))
+                        this.value = new RegExp(this.value, "ig");
+                    return this.value.test(record[this.name]);
+                case DbFilterComparison.NOT_LIKE:
+                    if (!(this.value instanceof RegExp))
+                        this.value = new RegExp(this.value, "ig");
+                    return this.value.test(record[this.name]) === false;
+                default:
+                    throw new Error("Unknown db filter comparison: " + this.comparison);
+            }
+        };
         this.name = name;
         this.comparison = comparison;
         this.value = value;
-    }
-    test(record) {
-        switch (this.comparison) {
-            case DbFilterComparison.EQUAL_TO:
-                return record[this.name] === this.value;
-            case DbFilterComparison.NOT_EQUAL_TO:
-                return record[this.name] !== this.value;
-            case DbFilterComparison.GREATER_THAN:
-                return record[this.name] > this.value;
-            case DbFilterComparison.GREATER_OR_EQUAL:
-                return record[this.name] >= this.value;
-            case DbFilterComparison.LOWER_THAN:
-                return record[this.name] < this.value;
-            case DbFilterComparison.LOWER_OR_EQUAL:
-                return record[this.name] <= this.value;
-            case DbFilterComparison.IN:
-                return this.value.indexOf(record[this.name]) >= 0;
-            case DbFilterComparison.NOT_IN:
-                return this.value.indexOf(record[this.name]) < 0;
-            case DbFilterComparison.LIKE:
-                if (!(this.value instanceof RegExp))
-                    this.value = new RegExp(this.value, "ig");
-                return this.value.test(record[this.name]);
-            case DbFilterComparison.NOT_LIKE:
-                if (!(this.value instanceof RegExp))
-                    this.value = new RegExp(this.value, "ig");
-                return this.value.test(record[this.name]) === false;
-            default:
-                throw new Error("Unknown db filter comparison: " + this.comparison);
-        }
     }
     getFilterType() {
         return DbFilterType.TERM;
@@ -68,21 +68,21 @@ class DbFilterTerm {
 exports.DbFilterTerm = DbFilterTerm;
 class DbFilterNode {
     constructor(filter) {
-        this.filter = filter;
-    }
-    test(record) {
-        if (this.next) {
-            switch (this.operation) {
-                case DbFilterOperation.AND:
-                    return this.filter.test(record) && this.next.test(record);
-                case DbFilterOperation.OR:
-                    return this.filter.test(record) || this.next.test(record);
-                default:
-                    throw new Error("Unknown filter operation: " + this.operation);
+        this.test = (record) => {
+            if (this.next) {
+                switch (this.operation) {
+                    case DbFilterOperation.AND:
+                        return this.filter.test(record) && this.next.test(record);
+                    case DbFilterOperation.OR:
+                        return this.filter.test(record) || this.next.test(record);
+                    default:
+                        throw new Error("Unknown filter operation: " + this.operation);
+                }
             }
-        }
-        else
-            return this.filter.test(record);
+            else
+                return this.filter.test(record);
+        };
+        this.filter = filter;
     }
     getFilterType() {
         return DbFilterType.NODE;
@@ -91,11 +91,9 @@ class DbFilterNode {
 exports.DbFilterNode = DbFilterNode;
 class DbFilterExpression {
     constructor(filter) {
+        this.test = (record) => this.first.test(record);
         this.first = new DbFilterNode(filter);
         this.last = this.first;
-    }
-    test(record) {
-        return this.first.test(record);
     }
     getFilterType() {
         return DbFilterType.EXPRESSION;

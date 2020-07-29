@@ -42,7 +42,7 @@ export interface DbSchema {
 export const getRecordKey = (
   record: any,
   keyPath: string | string[]
-): IDBValidKey | IDBValidKey[] =>
+): DbKey | DbKey[] =>
   Array.isArray(keyPath)
     ? keyPath.map((k: string) => record[k])
     : record[keyPath];
@@ -56,10 +56,13 @@ export const getRecordKey = (
 export const setRecordKey = (
   record: any,
   keyPath: string | string[],
-  key: IDBValidKey | IDBValidKey[]
+  key: DbKey | DbKey[]
 ) => {
   if (Array.isArray(keyPath)) {
-    for (let i = 0; i < keyPath.length; i++) record[keyPath[i]] = key[i];
+    const keyArr: DbKey[] = key as DbKey[];
+    for (let i = 0; i < keyPath.length; i++) {
+      record[keyPath[i]] = keyArr[i];
+    }
   } else {
     record[keyPath] = key;
   }

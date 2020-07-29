@@ -23,7 +23,7 @@ export enum DbFilterOperation {
 }
 
 export interface DbFilter {
-  test(record: any): boolean;
+  test: (record: any) => boolean;
   getFilterType(): DbFilterType;
 }
 
@@ -36,7 +36,7 @@ export class DbFilterTerm implements DbFilter {
     this.comparison = comparison;
     this.value = value;
   }
-  test(record: any): boolean {
+  test = (record: any): boolean => {
     switch (this.comparison) {
       case DbFilterComparison.EQUAL_TO:
         return record[this.name] === this.value;
@@ -65,7 +65,7 @@ export class DbFilterTerm implements DbFilter {
       default:
         throw new Error("Unknown db filter comparison: " + this.comparison);
     }
-  }
+  };
   getFilterType(): DbFilterType {
     return DbFilterType.TERM;
   }
@@ -78,7 +78,7 @@ export class DbFilterNode implements DbFilter {
   constructor(filter: DbFilter) {
     this.filter = filter;
   }
-  test(record: any): boolean {
+  test = (record: any): boolean => {
     if (this.next) {
       switch (this.operation) {
         case DbFilterOperation.AND:
@@ -89,7 +89,7 @@ export class DbFilterNode implements DbFilter {
           throw new Error("Unknown filter operation: " + this.operation);
       }
     } else return this.filter.test(record);
-  }
+  };
   getFilterType(): DbFilterType {
     return DbFilterType.NODE;
   }
@@ -102,9 +102,9 @@ export class DbFilterExpression implements DbFilter {
     this.first = new DbFilterNode(filter);
     this.last = this.first;
   }
-  test(record: any): boolean {
-    return this.first.test(record);
-  }
+
+  test = (record: any): boolean => this.first.test(record);
+
   getFilterType(): DbFilterType {
     return DbFilterType.EXPRESSION;
   }

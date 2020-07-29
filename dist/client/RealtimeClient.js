@@ -4,13 +4,26 @@ exports.RealtimeClient = exports.RealtimeClientEvent = void 0;
 const JsonRpc_1 = require("../common/JsonRpc");
 const Handlers_1 = require("../common/Handlers");
 const Listeners_1 = require("../common/Listeners");
+/**
+ * The most basic realtime client events.
+ */
 var RealtimeClientEvent;
 (function (RealtimeClientEvent) {
     RealtimeClientEvent["CONNECT"] = "CONNECT";
     RealtimeClientEvent["ERROR"] = "ERROR";
     RealtimeClientEvent["DISCONNECT"] = "DISCONNECT";
 })(RealtimeClientEvent = exports.RealtimeClientEvent || (exports.RealtimeClientEvent = {}));
+/**
+ * This class is responsible for handling messages of a websocket on the client side.
+ * It exposes handlers for method calls and listeners for notifications.
+ * @author Rodrigo Portela <rodrigo.portela@gmail.com>
+ */
 class RealtimeClient extends JsonRpc_1.default {
+    /**
+     * Creates a new realtime client.
+     * @param url
+     * @param protocols
+     */
     constructor(url, protocols) {
         super();
         this.reconnectHandler = 0;
@@ -18,6 +31,9 @@ class RealtimeClient extends JsonRpc_1.default {
         this.handlers = new Handlers_1.Handlers();
         this.listeners = new Listeners_1.Listeners();
         this.reconnectTimeout = 10000;
+        /**
+         * Connects to a remote URL using protocols and binds events to the socket.
+         */
         this.connect = () => {
             if (this.connected === true)
                 return;
@@ -70,6 +86,11 @@ class RealtimeClient extends JsonRpc_1.default {
             this.reconnectHandler = window.setTimeout(this.connect, this.reconnectTimeout);
             this.listeners.notify(RealtimeClientEvent.DISCONNECT, ev);
         };
+        /**
+         * Receives a message from the remote source.
+         * Currently only JSON messages are parsed and processed.
+         * @param msg
+         */
         this.onMessage = (msg) => {
             this.receiveJson(msg.data);
         };
@@ -79,6 +100,9 @@ class RealtimeClient extends JsonRpc_1.default {
             this.connect();
         window.addEventListener("online", this.connect);
     }
+    /**
+     * Removes all listeners from a socket and sets current attribute to null.
+     */
     resetSocket() {
         if (this.socket) {
             this.socket.removeEventListener("close", this.onClose);
@@ -88,15 +112,30 @@ class RealtimeClient extends JsonRpc_1.default {
             this.socket = null;
         }
     }
+    /**
+     * Either sends the message if connected.
+     * Or stores it in a buffer for sending when connected.
+     * @param json
+     */
     sendJson(json) {
         if (this.connected)
             this.socket.send(json);
         else
             this.buffer.push(json);
     }
+    /**
+     * Handles a remote procedure call by invoking a handler out of the Handlers.
+     * @param method
+     * @param params
+     */
     handleCall(method, params) {
         return this.handlers.invoke(method, params);
     }
+    /**
+     * Handles a notification by notifying all listeners.
+     * @param method
+     * @param params
+     */
     handleNotification(method, params) {
         this.listeners.notify(method, params);
     }
@@ -106,15 +145,34 @@ class RealtimeClient extends JsonRpc_1.default {
     isConnected() {
         return this.connected;
     }
+    /**
+     * Adds a listener to a specific notification.
+     * @param method
+     * @param listener
+     */
     addListener(method, listener) {
         this.listeners.addListener(method, listener);
     }
+    /**
+     * Removes a listener from a specific notification.
+     * @param method
+     * @param listener
+     */
     removeListener(method, listener) {
         this.listeners.removeListener(method, listener);
     }
+    /**
+     * Sets a handler for a remote method call.
+     * @param method
+     * @param handler
+     */
     setHandler(method, handler) {
         this.handlers.setHandler(method, handler);
     }
+    /**
+     * Deletes the handler of a remote method call.
+     * @param method
+     */
     removeHandler(method) {
         this.handlers.removeHandler(method);
     }

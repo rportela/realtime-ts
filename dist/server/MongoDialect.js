@@ -52,6 +52,9 @@ exports.dbFilterTermToQuery = (filter) => {
             mFilter["$not"][filter.name] = { $in: filter.value };
             break;
         case DbFilters_1.DbFilterComparison.LIKE:
+            mFilter[filter.name] = { $expr: filter.value };
+            break;
+        case DbFilters_1.DbFilterComparison.NOT_LIKE:
             mFilter["$not"] = {};
             mFilter["$not"][filter.name] = { $expr: filter.value };
             break;

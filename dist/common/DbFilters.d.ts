@@ -20,7 +20,7 @@ export declare enum DbFilterOperation {
     OR = 1
 }
 export interface DbFilter {
-    test(record: any): boolean;
+    test: (record: any) => boolean;
     getFilterType(): DbFilterType;
 }
 export declare class DbFilterTerm implements DbFilter {
@@ -28,7 +28,7 @@ export declare class DbFilterTerm implements DbFilter {
     comparison: DbFilterComparison;
     value: any;
     constructor(name: string, comparison: DbFilterComparison, value: any);
-    test(record: any): boolean;
+    test: (record: any) => boolean;
     getFilterType(): DbFilterType;
 }
 export declare class DbFilterNode implements DbFilter {
@@ -36,14 +36,14 @@ export declare class DbFilterNode implements DbFilter {
     operation?: DbFilterOperation;
     next?: DbFilterNode;
     constructor(filter: DbFilter);
-    test(record: any): boolean;
+    test: (record: any) => boolean;
     getFilterType(): DbFilterType;
 }
 export declare class DbFilterExpression implements DbFilter {
     first: DbFilterNode;
     last: DbFilterNode;
     constructor(filter: DbFilter);
-    test(record: any): boolean;
+    test: (record: any) => boolean;
     getFilterType(): DbFilterType;
     and(filter: DbFilter): DbFilterExpression;
     or(filter: DbFilter): DbFilterExpression;
