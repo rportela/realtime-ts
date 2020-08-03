@@ -17,8 +17,9 @@ exports.getRecordKey = (record, keyPath) => Array.isArray(keyPath)
  */
 exports.setRecordKey = (record, keyPath, key) => {
     if (Array.isArray(keyPath)) {
+        const keyArr = key;
         for (let i = 0; i < keyPath.length; i++) {
-            record[keyPath[i]] = key[i];
+            record[keyPath[i]] = keyArr[i];
         }
     }
     else {
