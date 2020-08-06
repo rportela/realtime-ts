@@ -1,6 +1,6 @@
 {
   "name": "realtime-ts",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A realtime engine for both server and client using typescript.",
   "main": "./dist/",
   "scripts": {
