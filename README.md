@@ -87,3 +87,11 @@ const client = new RealtimeClient("ws://localhost:1337");
 const result: Promise<string> = client.call("CALL_ME_MAYBE");
 result.then((answer) => console.log(answer));
 ```
+
+## In Between: JSON RPC
+
+Please check the documentation for JSON RPC on this [markdown documentation](https://github.com/rportela/realtime-ts/blob/master/docs/jsonrpc.md) and feel free to collaborate and edit.
+
+## Realtime Database
+
+Please check the documentation for the realtime database implemented using this library on this [markdown documentation](https://github.com/rportela/realtime-ts/blob/master/docs/realtimedb.md) and feel free to collaborate and edit.
