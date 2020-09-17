@@ -68,7 +68,7 @@ A client connects to the server, retrieves it's schema and creates the appropria
 const DbServer = new RealtimeDb("ws://localhost:1337");
 ```
 
-After that you can easily grab a reference for a database and start execution method calls and the changed records will be notified to the server and further informed to every listening client.
+After that you can easily grab a reference for a database and start executing method calls and the changed records will be notified to the server and further informed to every listening client.
 
 Here's an example method call:
 

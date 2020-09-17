@@ -28,7 +28,6 @@ export default class ObservableDb implements Db {
   constructor(db: Db) {
     this.db = db;
   }
-
   getSchema(): DbSchema {
     return this.db.getSchema();
   }
@@ -53,6 +52,9 @@ export default class ObservableDb implements Db {
       this.listeners.notify(DbEvent.DB_COLLECTION_DROP, event);
       return event;
     });
+  }
+  get<T>(collection: string, key: DbKey): Promise<T> {
+    return this.db.get(collection, key);
   }
   add<T>(collection: string, record: T): Promise<DbRecordAdd<T>> {
     return this.db.add(collection, record).then((event: DbRecordAdd<T>) => {

@@ -28,6 +28,7 @@ class RealtimeClient extends JsonRpc_1.default {
         super();
         this.reconnectHandler = 0;
         this.connected = false;
+        this.buffer = [];
         this.handlers = new Handlers_1.Handlers();
         this.listeners = new Listeners_1.Listeners();
         this.reconnectTimeout = 10000;

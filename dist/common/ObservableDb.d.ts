@@ -17,6 +17,7 @@ export default class ObservableDb implements Db {
     getCollectionSchema(collection: string): DbCollectionSchema;
     dropDatabase(): Promise<DbDatabaseDrop>;
     dropCollection(name: string): Promise<DbCollectionDrop>;
+    get<T>(collection: string, key: DbKey): Promise<T>;
     add<T>(collection: string, record: T): Promise<DbRecordAdd<T>>;
     put<T>(collection: string, record: T): Promise<DbRecordPut<T>>;
     delete<T>(collection: string, key: DbKey): Promise<DbRecordDelete>;

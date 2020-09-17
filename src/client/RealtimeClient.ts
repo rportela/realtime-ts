@@ -20,7 +20,7 @@ export class RealtimeClient extends JsonRpc {
   private socket: WebSocket;
   private reconnectHandler: number = 0;
   private connected: boolean = false;
-  private buffer: string[];
+  private buffer: string[] = [];
   private handlers: Handlers = new Handlers();
   private listeners: Listeners = new Listeners();
   reconnectTimeout: number = 10000;

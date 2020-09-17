@@ -35,6 +35,9 @@ class ObservableDb {
             return event;
         });
     }
+    get(collection, key) {
+        return this.db.get(collection, key);
+    }
     add(collection, record) {
         return this.db.add(collection, record).then((event) => {
             this.listeners.notify(DbEvents_1.DbEvent.DB_RECORD_ADD, event);

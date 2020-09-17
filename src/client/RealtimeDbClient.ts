@@ -20,7 +20,9 @@ const RTSDB_LOCAL_KEY = "RTSDB_SCHEMA";
  *
  */
 export default class RealtimeDbClient extends RealtimeClient {
-  private dbs: ObservableDb[];
+  private dbs: Promise<ObservableDb[]>;
+  private resolveDbs: (dbs: ObservableDb[]) => void;
+  private rejectDbs: (e: any) => void;
 
   /**
    * Instantiates a new instance of a realtime Db Client.
@@ -32,6 +34,10 @@ export default class RealtimeDbClient extends RealtimeClient {
     protocols: string[] = ["wss", "ws"]
   ) {
     super(url, protocols);
+    this.dbs = new Promise((resolve, reject) => {
+      this.resolveDbs = resolve;
+      this.rejectDbs = reject;
+    });
     this.addListener(RealtimeClientEvent.CONNECT, this.onConnect);
     this.addListener(DbEvent.DB_RECORD_ADD, this.onRemoteAdd);
     this.addListener(DbEvent.DB_RECORD_DELETE, this.onRemoteDelete);
@@ -42,7 +48,8 @@ export default class RealtimeDbClient extends RealtimeClient {
     const localSchema = localStorage.getItem(RTSDB_LOCAL_KEY);
     if (localSchema) {
       const schemas: DbSchema[] = JSON.parse(localSchema);
-      this.dbs = schemas.map(this.createLocalDb);
+      this.resolveDbs(schemas.map(this.createLocalDb));
+      this.notify(DbEvent.DB_CREATED, this.dbs);
     }
   }
 
@@ -73,7 +80,9 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemoteAdd = (params: DbRecordAdd<any>) => {
-    this.getDb(params.db).add(params.collection, params.record);
+    this.getDb(params.db).then((db) =>
+      db.add(params.collection, params.record)
+    );
   };
 
   /**
@@ -81,7 +90,9 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemotePut = (params: DbRecordPut<any>) => {
-    this.getDb(params.db).put(params.collection, params.record);
+    this.getDb(params.db).then((db) =>
+      db.put(params.collection, params.record)
+    );
   };
 
   /**
@@ -89,7 +100,9 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemoteDelete = (params: DbRecordDelete) => {
-    this.getDb(params.db).delete(params.collection, params.key);
+    this.getDb(params.db).then((db) =>
+      db.delete(params.collection, params.key)
+    );
   };
 
   /**
@@ -97,7 +110,7 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemoteSelect = (params: RealtimeDbSelectParams): Promise<any[]> => {
-    return this.getDb(params.db).select(params);
+    return this.getDb(params.db).then((db) => db.select(params));
   };
 
   /**
@@ -105,7 +118,7 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemoteGet = (params: RealtimeDbGetParams): Promise<any> => {
-    return this.getDb(params.db).first(params);
+    return this.getDb(params.db).then((db) => db.first(params));
   };
 
   /**
@@ -113,9 +126,9 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param params
    */
   private onRemoteSchema = (params: DbSchema[]) => {
-    if (this.dbs) this.dbs.forEach(this.removeLocalDb);
-    this.dbs = params.map(this.createLocalDb);
+    this.resolveDbs(params.map(this.createLocalDb));
     localStorage.setItem(RTSDB_LOCAL_KEY, JSON.stringify(params));
+    this.notify(DbEvent.DB_CREATED, this.dbs);
   };
 
   /**
@@ -154,7 +167,7 @@ export default class RealtimeDbClient extends RealtimeClient {
    * This method won't fail. It returns undefined when no database is found.
    * @param name
    */
-  getDb(name: string): ObservableDb {
-    return this.dbs.find((d) => d.getName() === name);
+  getDb(name: string): Promise<ObservableDb> {
+    return this.dbs.then((dbs) => dbs.find((d) => d.getName() === name));
   }
 }

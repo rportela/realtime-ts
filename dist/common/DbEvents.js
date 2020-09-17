@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DbEvent = void 0;
 var DbEvent;
 (function (DbEvent) {
+    DbEvent["DB_CREATED"] = "DB_CREATED";
     DbEvent["DB_RECORD_ADD"] = "DB_RECORD_ADD";
     DbEvent["DB_RECORD_PUT"] = "DB_RECORD_PUT";
     DbEvent["DB_RECORD_DELETE"] = "DB_RECORD_DELETE";

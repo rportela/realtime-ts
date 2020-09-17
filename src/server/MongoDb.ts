@@ -76,6 +76,16 @@ export default class MongoDb implements Db {
         else throw new Error("Unable to delete collection " + name);
       })
     );
+  
+  }
+  get<T>(collection: string, key: DbKey): Promise<T> {
+    return this.open
+      .then((db) => db.collection(collection))
+      .then((col) => {
+        const filter: any = {};
+        filter[this.getCollectionSchema(collection).keyPath] = key;
+        return col.findOne(filter);
+      });
   }
   add<T>(collection: string, record: T): Promise<DbRecordAdd<T>> {
     return this.open.then((db) =>

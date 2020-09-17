@@ -1,6 +1,7 @@
 import { DbKey } from "./DbSchema";
 
 export enum DbEvent {
+  DB_CREATED = "DB_CREATED",
   DB_RECORD_ADD = "DB_RECORD_ADD",
   DB_RECORD_PUT = "DB_RECORD_PUT",
   DB_RECORD_DELETE = "DB_RECORD_DELETE",

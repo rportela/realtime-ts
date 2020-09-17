@@ -13,6 +13,7 @@ export default class BrowserDb implements Db {
     private schema;
     private open;
     constructor(schema: DbSchema);
+    get<T>(collection: string, key: DbKey): Promise<T>;
     /**
      * Finds a collection schema by name.
      * @param collection

@@ -42,45 +42,44 @@ class RealtimeDbClient extends RealtimeClient_1.RealtimeClient {
          * @param params
          */
         this.onRemoteAdd = (params) => {
-            this.getDb(params.db).add(params.collection, params.record);
+            this.getDb(params.db).then((db) => db.add(params.collection, params.record));
         };
         /**
          * Event raised when a record is put on the remote database.
          * @param params
          */
         this.onRemotePut = (params) => {
-            this.getDb(params.db).put(params.collection, params.record);
+            this.getDb(params.db).then((db) => db.put(params.collection, params.record));
         };
         /**
          * Event raised when a records is deleted on the remote database.
          * @param params
          */
         this.onRemoteDelete = (params) => {
-            this.getDb(params.db).delete(params.collection, params.key);
+            this.getDb(params.db).then((db) => db.delete(params.collection, params.key));
         };
         /**
          * Handler for the select records call.
          * @param params
          */
         this.onRemoteSelect = (params) => {
-            return this.getDb(params.db).select(params);
+            return this.getDb(params.db).then((db) => db.select(params));
         };
         /**
          * Handler for the get record call.
          * @param params
          */
         this.onRemoteGet = (params) => {
-            return this.getDb(params.db).first(params);
+            return this.getDb(params.db).then((db) => db.first(params));
         };
         /**
          * Handler for the get schema call.
          * @param params
          */
         this.onRemoteSchema = (params) => {
-            if (this.dbs)
-                this.dbs.forEach(this.removeLocalDb);
-            this.dbs = params.map(this.createLocalDb);
+            this.resolveDbs(params.map(this.createLocalDb));
             localStorage.setItem(RTSDB_LOCAL_KEY, JSON.stringify(params));
+            this.notify(DbEvents_1.DbEvent.DB_CREATED, this.dbs);
         };
         /**
          * Event raised when a connection is established.
@@ -109,6 +108,10 @@ class RealtimeDbClient extends RealtimeClient_1.RealtimeClient {
         this.onLocalDelete = (params) => {
             this.notify(DbEvents_1.DbEvent.DB_RECORD_DELETE, params);
         };
+        this.dbs = new Promise((resolve, reject) => {
+            this.resolveDbs = resolve;
+            this.rejectDbs = reject;
+        });
         this.addListener(RealtimeClient_1.RealtimeClientEvent.CONNECT, this.onConnect);
         this.addListener(DbEvents_1.DbEvent.DB_RECORD_ADD, this.onRemoteAdd);
         this.addListener(DbEvents_1.DbEvent.DB_RECORD_DELETE, this.onRemoteDelete);
@@ -118,7 +121,8 @@ class RealtimeDbClient extends RealtimeClient_1.RealtimeClient {
         const localSchema = localStorage.getItem(RTSDB_LOCAL_KEY);
         if (localSchema) {
             const schemas = JSON.parse(localSchema);
-            this.dbs = schemas.map(this.createLocalDb);
+            this.resolveDbs(schemas.map(this.createLocalDb));
+            this.notify(DbEvents_1.DbEvent.DB_CREATED, this.dbs);
         }
     }
     /**
@@ -127,7 +131,7 @@ class RealtimeDbClient extends RealtimeClient_1.RealtimeClient {
      * @param name
      */
     getDb(name) {
-        return this.dbs.find((d) => d.getName() === name);
+        return this.dbs.then((dbs) => dbs.find((d) => d.getName() === name));
     }
 }
 exports.default = RealtimeDbClient;

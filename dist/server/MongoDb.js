@@ -47,6 +47,15 @@ class MongoDb {
                 throw new Error("Unable to delete collection " + name);
         }));
     }
+    get(collection, key) {
+        return this.open
+            .then((db) => db.collection(collection))
+            .then((col) => {
+            const filter = {};
+            filter[this.getCollectionSchema(collection).keyPath] = key;
+            return col.findOne(filter);
+        });
+    }
     add(collection, record) {
         return this.open.then((db) => db
             .collection(collection)

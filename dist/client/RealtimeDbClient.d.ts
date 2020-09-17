@@ -5,6 +5,8 @@ import { RealtimeClient } from "./RealtimeClient";
  */
 export default class RealtimeDbClient extends RealtimeClient {
     private dbs;
+    private resolveDbs;
+    private rejectDbs;
     /**
      * Instantiates a new instance of a realtime Db Client.
      * @param url
@@ -75,5 +77,5 @@ export default class RealtimeDbClient extends RealtimeClient {
      * This method won't fail. It returns undefined when no database is found.
      * @param name
      */
-    getDb(name: string): ObservableDb;
+    getDb(name: string): Promise<ObservableDb>;
 }
