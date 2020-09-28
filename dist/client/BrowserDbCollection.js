@@ -170,7 +170,7 @@ class BrowserDbCollection {
         });
     }
     query(filter, sort, offset, limit) {
-        return this.filter(filter.createTest()).then((records) => {
+        return (filter ? this.filter(filter.createTest()) : this.all()).then((records) => {
             if (sort)
                 sort.sort(records);
             if (offset)

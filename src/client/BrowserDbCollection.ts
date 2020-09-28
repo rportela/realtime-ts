@@ -187,19 +187,21 @@ export default class BrowserDbCollection<T>
     });
   }
   query(
-    filter: DatabaseFilter,
+    filter?: DatabaseFilter,
     sort?: DatabaseSortExpression,
     offset?: number,
     limit?: number
   ): Promise<T[]> {
-    return this.filter(filter.createTest()).then((records) => {
-      if (sort) sort.sort(records);
-      if (offset)
-        return limit
-          ? records.slice(offset, offset + limit)
-          : records.slice(offset);
-      else if (limit) return records.slice(0, limit);
-      else return records;
-    });
+    return (filter ? this.filter(filter.createTest()) : this.all()).then(
+      (records) => {
+        if (sort) sort.sort(records);
+        if (offset)
+          return limit
+            ? records.slice(offset, offset + limit)
+            : records.slice(offset);
+        else if (limit) return records.slice(0, limit);
+        else return records;
+      }
+    );
   }
 }
