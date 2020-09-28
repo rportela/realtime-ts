@@ -1,28 +1,24 @@
-import {
-  DbEvent,
-  DbRecordAdd,
-  DbRecordDelete,
-  DbRecordPut,
-} from "../common/DbEvents";
-import { DbSchema } from "../common/DbSchema";
+import { DatabaseSchema } from "../common/DatabaseDefinition";
 import ObservableDb from "../common/ObservableDb";
 import {
-  RealtimeDbEvent,
-  RealtimeDbGetParams,
-  RealtimeDbSelectParams,
-} from "../common/RealtimeDbEvent";
+  ObservableDbCollection,
+  ObservableDbEvents,
+  ObservableDbKeyInfo,
+  ObservableDbRecordInfo,
+} from "../common/ObservableDbCollection";
+import { RealtimeDbEvent } from "../common/RealtimeDbEvent";
 import BrowserDb from "./BrowserDb";
-import { RealtimeClient, RealtimeClientEvent } from "./RealtimeClient";
+import JsonRpcClient from "./JsonRpcClient";
 
-const RTSDB_LOCAL_KEY = "RTSDB_SCHEMA";
+const RTSDB_SCHEMA = "RTSDB_SCHEMA";
 
 /**
  *
  */
-export default class RealtimeDbClient extends RealtimeClient {
+export default class RealtimeDbClient extends JsonRpcClient {
   private dbs: Promise<ObservableDb[]>;
   private resolveDbs: (dbs: ObservableDb[]) => void;
-  private rejectDbs: (e: any) => void;
+  private rejectDbs: (err: any) => void;
 
   /**
    * Instantiates a new instance of a realtime Db Client.
@@ -34,35 +30,61 @@ export default class RealtimeDbClient extends RealtimeClient {
     protocols: string[] = ["wss", "ws"]
   ) {
     super(url, protocols);
-    this.dbs = new Promise((resolve, reject) => {
-      this.resolveDbs = resolve;
-      this.rejectDbs = reject;
-    });
-    this.addListener(RealtimeClientEvent.CONNECT, this.onConnect);
-    this.addListener(DbEvent.DB_RECORD_ADD, this.onRemoteAdd);
-    this.addListener(DbEvent.DB_RECORD_DELETE, this.onRemoteDelete);
-    this.addListener(DbEvent.DB_RECORD_PUT, this.onRemotePut);
-    this.setHandler(RealtimeDbEvent.SELECT, this.onRemoteSelect);
-    this.setHandler(RealtimeDbEvent.GET, this.onRemoteGet);
-
-    const localSchema = localStorage.getItem(RTSDB_LOCAL_KEY);
-    if (localSchema) {
-      const schemas: DbSchema[] = JSON.parse(localSchema);
-      this.resolveDbs(schemas.map(this.createLocalDb));
-      this.notify(DbEvent.DB_CREATED, this.dbs);
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_ADD,
+      this.onRemoteAdd
+    );
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_PUT,
+      this.onRemotePut
+    );
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_DEL,
+      this.onRemoteDelete
+    );
+    if (!this.loadLocalSchema()) {
+      this.dbs = new Promise((resolve, reject) => {
+        this.resolveDbs = resolve;
+        this.rejectDbs = reject;
+      });
     }
+  }
+
+  private loadLocalSchema() {
+    const localSchema = localStorage.getItem(RTSDB_SCHEMA);
+    if (localSchema) {
+      try {
+        const schemas: DatabaseSchema[] = JSON.parse(localSchema);
+        this.dbs = Promise.resolve(schemas.map((s) => this.createLocalDb(s)));
+        return true;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    return false;
   }
 
   /**
    * Creates an instance and attaches listeners for the client db.
    * @param schema
    */
-  private createLocalDb = (schema: DbSchema): ObservableDb => {
+  private createLocalDb = (schema: DatabaseSchema): ObservableDb => {
     const db = new ObservableDb(new BrowserDb(schema));
-    db.addListener(DbEvent.DB_RECORD_ADD, this.onLocalAdd);
-    db.addListener(DbEvent.DB_RECORD_PUT, this.onLocalPut);
-    db.addListener(DbEvent.DB_RECORD_DELETE, this.onLocalDelete);
+    db.getCollections().then((cols) =>
+      cols.forEach((col) =>
+        this.attachCollection(col as ObservableDbCollection<any>)
+      )
+    );
     return db;
+  };
+
+  private attachCollection = (col: ObservableDbCollection<any>) => {
+    col.addListener(ObservableDbEvents.OBS_DB_COLLECTION_ADD, this.onLocalAdd);
+    col.addListener(ObservableDbEvents.OBS_DB_COLLECTION_PUT, this.onLocalPut);
+    col.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_DEL,
+      this.onLocalDelete
+    );
   };
 
   /**
@@ -70,96 +92,101 @@ export default class RealtimeDbClient extends RealtimeClient {
    * @param db
    */
   private removeLocalDb = (db: ObservableDb) => {
-    db.addListener(DbEvent.DB_RECORD_ADD, this.onLocalAdd);
-    db.addListener(DbEvent.DB_RECORD_PUT, this.onLocalPut);
-    db.addListener(DbEvent.DB_RECORD_DELETE, this.onLocalDelete);
-  };
-
-  /**
-   * Event raised when a record is added to the remote database.
-   * @param params
-   */
-  private onRemoteAdd = (params: DbRecordAdd<any>) => {
-    this.getDb(params.db).then((db) =>
-      db.add(params.collection, params.record)
+    db.getCollections().then((cols) =>
+      cols.forEach((col) =>
+        this.detachCollection(col as ObservableDbCollection<any>)
+      )
     );
   };
 
-  /**
-   * Event raised when a record is put on the remote database.
-   * @param params
-   */
-  private onRemotePut = (params: DbRecordPut<any>) => {
-    this.getDb(params.db).then((db) =>
-      db.put(params.collection, params.record)
+  private detachCollection = (col: ObservableDbCollection<any>) => {
+    col.removeListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_ADD,
+      this.onLocalAdd
     );
-  };
-
-  /**
-   * Event raised when a records is deleted on the remote database.
-   * @param params
-   */
-  private onRemoteDelete = (params: DbRecordDelete) => {
-    this.getDb(params.db).then((db) =>
-      db.delete(params.collection, params.key)
+    col.removeListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_PUT,
+      this.onLocalPut
     );
-  };
-
-  /**
-   * Handler for the select records call.
-   * @param params
-   */
-  private onRemoteSelect = (params: RealtimeDbSelectParams): Promise<any[]> => {
-    return this.getDb(params.db).then((db) => db.select(params));
-  };
-
-  /**
-   * Handler for the get record call.
-   * @param params
-   */
-  private onRemoteGet = (params: RealtimeDbGetParams): Promise<any> => {
-    return this.getDb(params.db).then((db) => db.first(params));
+    col.removeListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_DEL,
+      this.onLocalDelete
+    );
   };
 
   /**
    * Handler for the get schema call.
    * @param params
    */
-  private onRemoteSchema = (params: DbSchema[]) => {
-    this.resolveDbs(params.map(this.createLocalDb));
-    localStorage.setItem(RTSDB_LOCAL_KEY, JSON.stringify(params));
-    this.notify(DbEvent.DB_CREATED, this.dbs);
+  private onRemoteSchema = (params: DatabaseSchema[]) => {
+    const localSchema = localStorage.getItem(RTSDB_SCHEMA);
+    const pre: Promise<unknown> = localSchema
+      ? this.dbs.then((dbs) => dbs.forEach((db) => this.removeLocalDb(db)))
+      : Promise.resolve();
+    localStorage.setItem(RTSDB_SCHEMA, JSON.stringify(params));
+    this.dbs = pre.then(() => params.map((s) => this.createLocalDb(s)));
   };
 
   /**
    * Event raised when a connection is established.
    */
-  private onConnect = () => {
+  protected onConnect = () => {
+    super.onConnect();
     this.call(RealtimeDbEvent.SCHEMA).then(this.onRemoteSchema);
+  };
+
+  /**
+   * Event raised when a record is added to the remote database.
+   * @param params
+   */
+  private onRemoteAdd = (params: ObservableDbRecordInfo) => {
+    this.getDb(params.db)
+      .then((db) => db.getCollection(params.collection))
+      .then((col) => col.add(params.record));
+  };
+
+  /**
+   * Event raised when a record is put on the remote database.
+   * @param params
+   */
+  private onRemotePut = (params: ObservableDbRecordInfo) => {
+    this.getDb(params.db)
+      .then((db) => db.getCollection(params.collection))
+      .then((col) => col.add(params.record));
+  };
+
+  /**
+   * Event raised when a records is deleted on the remote database.
+   * @param params
+   */
+  private onRemoteDelete = (params: ObservableDbKeyInfo) => {
+    this.getDb(params.db)
+      .then((db) => db.getCollection(params.collection))
+      .then((col) => col.delete(params.key));
   };
 
   /**
    * Event raised when a record is added to the client db.
    * @param params
    */
-  private onLocalAdd = (params: DbRecordAdd<any>) => {
-    this.notify(DbEvent.DB_RECORD_ADD, params);
+  private onLocalAdd = (params: ObservableDbRecordInfo) => {
+    this.notify(ObservableDbEvents.OBS_DB_COLLECTION_ADD, params);
   };
 
   /**
    * Event raised when a record is put on the client db.
    * @param params
    */
-  private onLocalPut = (params: DbRecordPut<any>) => {
-    this.notify(DbEvent.DB_RECORD_PUT, params);
+  private onLocalPut = (params: ObservableDbRecordInfo) => {
+    this.notify(ObservableDbEvents.OBS_DB_COLLECTION_PUT, params);
   };
 
   /**
    * Event raised when a records is deleted from the client db.
    * @param params
    */
-  private onLocalDelete = (params: DbRecordDelete) => {
-    this.notify(DbEvent.DB_RECORD_DELETE, params);
+  private onLocalDelete = (params: ObservableDbKeyInfo) => {
+    this.notify(ObservableDbEvents.OBS_DB_COLLECTION_DEL, params);
   };
 
   /**

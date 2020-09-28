@@ -1,53 +1,50 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const DbEvents_1 = require("../common/DbEvents");
+const ObservableDbCollection_1 = require("../common/ObservableDbCollection");
 const RealtimeDbEvent_1 = require("../common/RealtimeDbEvent");
 const RealtimeServer_1 = require("./RealtimeServer");
 class RealtimeDbServer extends RealtimeServer_1.RealtimeServer {
     constructor(dbs, useHttps) {
         super(useHttps);
         this.clientAddRecord = (client, params) => {
-            this.notifyClients(DbEvents_1.DbEvent.DB_RECORD_ADD, params, client);
-            this.getDb(params.db).add(params.collection, params.record);
+            this.notifyClients(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_ADD, params, client);
+            this.getDb(params.db)
+                .getCollection(params.collection)
+                .then((col) => col.add(params.record));
         };
         this.clientPutRecord = (client, params) => {
-            this.notifyClients(DbEvents_1.DbEvent.DB_RECORD_PUT, params, client);
-            this.getDb(params.db).put(params.collection, params.record);
+            this.notifyClients(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_PUT, params, client);
+            this.getDb(params.db)
+                .getCollection(params.collection)
+                .then((col) => col.put(params.record));
         };
         this.clientDeleteRecord = (client, params) => {
-            this.notifyClients(DbEvents_1.DbEvent.DB_RECORD_DELETE, params, client);
-            this.getDb(params.db).delete(params.collection, params.key);
+            this.notifyClients(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_DEL, params, client);
+            this.getDb(params.db)
+                .getCollection(params.collection)
+                .then((col) => col.delete(params.key));
         };
-        this.notifyClient = (client, params) => {
-            const db = this.getDb(params.db);
-            const keyPath = db.getCollectionSchema(params.collection).keyPath;
-            db.forEach({
-                collection: params.collection,
-                where: params.filter,
-                iterator: (record) => {
-                    const message = {
-                        db: params.db,
-                        collection: params.collection,
-                        record: record,
-                        key: record[keyPath],
-                        when: record["updated_at"],
-                    };
-                    client.notify(DbEvents_1.DbEvent.DB_RECORD_PUT, message);
-                },
-            });
-        };
-        this.getSchema = () => {
-            return this.dbs.map((d) => d.getSchema());
-        };
+        this.notifyClient = (client, params) => this.getDb(params.db)
+            .getCollection(params.collection)
+            .then((col) => col.query(params.filter, params.sort, params.offset, params.limit))
+            .then((rows) => rows.forEach((row) => client.notify(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_PUT, {
+            db: params.db,
+            collection: params.collection,
+            record: row,
+            key: undefined,
+        })));
         this.dbs = dbs;
-        this.addListener(DbEvents_1.DbEvent.DB_RECORD_ADD, this.clientAddRecord);
-        this.addListener(DbEvents_1.DbEvent.DB_RECORD_PUT, this.clientPutRecord);
-        this.addListener(DbEvents_1.DbEvent.DB_RECORD_DELETE, this.clientDeleteRecord);
+        this.addListener(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_ADD, this.clientAddRecord);
+        this.addListener(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_PUT, this.clientPutRecord);
+        this.addListener(ObservableDbCollection_1.ObservableDbEvents.OBS_DB_COLLECTION_DEL, this.clientDeleteRecord);
         this.setHandler(RealtimeDbEvent_1.RealtimeDbEvent.SCHEMA, this.getSchema);
         this.setHandler(RealtimeDbEvent_1.RealtimeDbEvent.NOTIFY, this.notifyClient);
     }
     getDb(name) {
         return this.dbs.find((d) => d.getName() === name);
+    }
+    getSchema() {
+        return this.dbs.map((db) => db.getSchema());
     }
 }
 exports.default = RealtimeDbServer;

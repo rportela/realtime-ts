@@ -1,12 +1,12 @@
-import { DbFilter, DbFilterExpression, DbFilterTerm } from "../common/DbFilters";
+import { DatabaseFilter, DatabaseFilterExpression, DatabaseFilterTerm } from "../common/DatabaseFilters";
 /**
  *
  * @param filter
  */
-export declare const dbFilterToQuery: (filter: DbFilter) => any;
+export declare const dbFilterToQuery: (filter: DatabaseFilter) => any;
 /**
  *
  * @param filter
  */
-export declare const dbFilterTermToQuery: (filter: DbFilterTerm) => any;
-export declare const dbFilterExpressionToQuery: (expression: DbFilterExpression) => any;
+export declare const dbFilterTermToQuery: (filter: DatabaseFilterTerm) => any;
+export declare const dbFilterExpressionToQuery: (expression: DatabaseFilterExpression) => any;

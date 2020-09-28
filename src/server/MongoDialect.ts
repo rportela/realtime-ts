@@ -1,24 +1,24 @@
 import {
-  DbFilter,
-  DbFilterComparison,
-  DbFilterExpression,
-  DbFilterNode,
-  DbFilterOperation,
-  DbFilterTerm,
-  DbFilterType,
-} from "../common/DbFilters";
+  DatabaseFilter,
+  DatabaseFilterComparison,
+  DatabaseFilterComposition,
+  DatabaseFilterExpression,
+  DatabaseFilterNode,
+  DatabaseFilterTerm,
+  DatabaseFilterType,
+} from "../common/DatabaseFilters";
 
 /**
  *
  * @param filter
  */
-export const dbFilterToQuery = (filter: DbFilter): any => {
+export const dbFilterToQuery = (filter: DatabaseFilter): any => {
   if (!filter) return undefined;
   switch (filter.getFilterType()) {
-    case DbFilterType.EXPRESSION:
-      return dbFilterExpressionToQuery(filter as DbFilterExpression);
-    case DbFilterType.TERM:
-      return dbFilterTermToQuery(filter as DbFilterTerm);
+    case DatabaseFilterType.EXPRESSION:
+      return dbFilterExpressionToQuery(filter as DatabaseFilterExpression);
+    case DatabaseFilterType.TERM:
+      return dbFilterTermToQuery(filter as DatabaseFilterTerm);
     default:
       throw new Error("Unable to convert o mongodb filter: " + filter);
   }
@@ -28,39 +28,39 @@ export const dbFilterToQuery = (filter: DbFilter): any => {
  *
  * @param filter
  */
-export const dbFilterTermToQuery = (filter: DbFilterTerm): any => {
+export const dbFilterTermToQuery = (filter: DatabaseFilterTerm): any => {
   const mFilter: any = {};
   switch (filter.comparison) {
-    case DbFilterComparison.EQUAL_TO:
+    case DatabaseFilterComparison.EQUAL_TO:
       mFilter[filter.name] = filter.value;
       break;
-    case DbFilterComparison.NOT_EQUAL_TO:
+    case DatabaseFilterComparison.NOT_EQUAL_TO:
       mFilter["$not"] = {};
       mFilter["$not"][filter.name] = filter.value;
       break;
-    case DbFilterComparison.GREATER_OR_EQUAL:
+    case DatabaseFilterComparison.GREATER_OR_EQUAL:
       mFilter[filter.name] = { $gte: filter.value };
       break;
-    case DbFilterComparison.GREATER_THAN:
+    case DatabaseFilterComparison.GREATER_THAN:
       mFilter[filter.name] = { $gt: filter.value };
       break;
-    case DbFilterComparison.LOWER_OR_EQUAL:
+    case DatabaseFilterComparison.LOWER_OR_EQUAL:
       mFilter[filter.name] = { $lte: filter.value };
       break;
-    case DbFilterComparison.LOWER_THAN:
+    case DatabaseFilterComparison.LOWER_THAN:
       mFilter[filter.name] = { $le: filter.value };
       break;
-    case DbFilterComparison.IN:
+    case DatabaseFilterComparison.IN:
       mFilter[filter.name] = { $in: filter.value };
       break;
-    case DbFilterComparison.NOT_IN:
+    case DatabaseFilterComparison.NOT_IN:
       mFilter["$not"] = {};
       mFilter["$not"][filter.name] = { $in: filter.value };
       break;
-    case DbFilterComparison.LIKE:
+    case DatabaseFilterComparison.LIKE:
       mFilter[filter.name] = { $expr: filter.value };
       break;
-    case DbFilterComparison.NOT_LIKE:
+    case DatabaseFilterComparison.NOT_LIKE:
       mFilter["$not"] = {};
       mFilter["$not"][filter.name] = { $expr: filter.value };
       break;
@@ -71,24 +71,24 @@ export const dbFilterTermToQuery = (filter: DbFilterTerm): any => {
 };
 
 export const dbFilterExpressionToQuery = (
-  expression: DbFilterExpression
+  expression: DatabaseFilterExpression
 ): any => dbFilterNodeToQuery(expression.first);
 
-const dbFilterNodeToQuery = (node: DbFilterNode): any => {
+const dbFilterNodeToQuery = (node: DatabaseFilterNode): any => {
   if (node.next) {
-    switch (node.operation) {
-      case DbFilterOperation.AND:
+    switch (node.composition) {
+      case DatabaseFilterComposition.AND:
         return {
           ...dbFilterToQuery(node.filter),
           ...dbFilterNodeToQuery(node.next),
         };
-      case DbFilterOperation.OR:
+      case DatabaseFilterComposition.OR:
         return {
           ...dbFilterToQuery(node.filter),
           $or: dbFilterNodeToQuery(node.next),
         };
       default:
-        throw new Error("Unknown filter operation " + node.operation);
+        throw new Error("Unknown filter composition " + node.composition);
     }
   } else return dbFilterToQuery(node.filter);
 };

@@ -1,95 +1,58 @@
-import { Db } from "./Db";
 import {
-  DbCollectionDrop,
-  DbEvent,
-  DbRecordAdd,
-  DbRecordDelete,
-  DbRecordPut,
-  DbDatabaseDrop,
-} from "./DbEvents";
-import { DbFilter } from "./DbFilters";
-import {
-  DbCollectionSchema,
-  DbForEachParameters,
-  DbKey,
-  DbQueryParameters,
-  DbSchema,
-} from "./DbSchema";
-import { Listener, Listeners } from "../common/Listeners";
+  DatabaseCollectionImplementation,
+  DatabaseImplementation,
+  DatabaseSchema,
+} from "./DatabaseDefinition";
+import { Listener, Listeners } from "./Listeners";
+import { ObservableDbCollection } from "./ObservableDbCollection";
+
+export enum ObservableDbEvent {
+  OBS_DB_DROP = "OBS_DB_DROP",
+}
 
 /**
  * This is an observable DB.
  * You and add listeners to any collection and be notified when records are added, put or deleted.
  */
-export default class ObservableDb implements Db {
-  private listeners: Listeners = new Listeners();
-  private db: Db;
+export default class ObservableDb implements DatabaseImplementation {
+  private listeners: Listeners;
+  private db: DatabaseImplementation;
+  private collections: Promise<DatabaseCollectionImplementation<any>[]>;
 
-  constructor(db: Db) {
+  constructor(db: DatabaseImplementation) {
     this.db = db;
-  }
-  getSchema(): DbSchema {
-    return this.db.getSchema();
+    this.collections = this.db
+      .getCollections()
+      .then((cols) => cols.map((col) => new ObservableDbCollection(col)));
+    this.listeners = new Listeners();
   }
 
   getName(): string {
     return this.db.getName();
   }
-  getVersion(): number | undefined {
+  getVersion(): number {
     return this.db.getVersion();
   }
-  getCollectionSchema(collection: string): DbCollectionSchema {
-    return this.db.getCollectionSchema(collection);
+  getCollections(): Promise<DatabaseCollectionImplementation<any>[]> {
+    return this.collections;
   }
-  dropDatabase(): Promise<DbDatabaseDrop> {
-    return this.db.dropDatabase().then((event: DbDatabaseDrop) => {
-      this.listeners.notify(DbEvent.DB_DATABASE_DROP, event);
-      return event;
-    });
+  getCollection<T>(name: string): Promise<DatabaseCollectionImplementation<T>> {
+    return this.getCollections().then((cols) =>
+      cols.find((col) => col.getName() === name)
+    );
   }
-  dropCollection(name: string): Promise<DbCollectionDrop> {
-    return this.db.dropCollection(name).then((event: DbCollectionDrop) => {
-      this.listeners.notify(DbEvent.DB_COLLECTION_DROP, event);
-      return event;
-    });
+  drop(): Promise<unknown> {
+    return this.db
+      .drop()
+      .then(() => this.listeners.notify(ObservableDbEvent.OBS_DB_DROP, this));
   }
-  get<T>(collection: string, key: DbKey): Promise<T> {
-    return this.db.get(collection, key);
-  }
-  add<T>(collection: string, record: T): Promise<DbRecordAdd<T>> {
-    return this.db.add(collection, record).then((event: DbRecordAdd<T>) => {
-      this.listeners.notify(DbEvent.DB_RECORD_ADD, event);
-      return event;
-    });
-  }
-  put<T>(collection: string, record: T): Promise<DbRecordPut<T>> {
-    return this.db.put(collection, record).then((event: DbRecordPut<T>) => {
-      this.listeners.notify(DbEvent.DB_RECORD_PUT, event);
-      return event;
-    });
-  }
-  delete<T>(collection: string, key: DbKey): Promise<DbRecordDelete> {
-    return this.db.delete(collection, key).then((event: DbRecordDelete) => {
-      this.listeners.notify(DbEvent.DB_RECORD_DELETE, event);
-      return event;
-    });
-  }
-  count(collection: string, filter?: DbFilter): Promise<number> {
-    return this.db.count(collection, filter);
-  }
-  first<T>(params: DbQueryParameters): Promise<T> {
-    return this.db.first(params);
-  }
-  select<T>(params: DbQueryParameters): Promise<T[]> {
-    return this.db.select(params);
-  }
-  forEach<T>(params: DbForEachParameters<T>): Promise<any> {
-    return this.db.forEach(params);
-  }
-  addListener(event: DbEvent, listener: Listener) {
+  addListener(event: ObservableDbEvent, listener: Listener) {
     this.listeners.addListener(event, listener);
   }
-  removeListener(event: DbEvent, listener: Listener) {
+  removeListener(event: ObservableDbEvent, listener: Listener) {
     this.listeners.removeListener(event, listener);
+  }
+  getSchema(): DatabaseSchema {
+    return this.db.getSchema();
   }
 }

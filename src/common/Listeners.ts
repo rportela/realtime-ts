@@ -4,26 +4,27 @@ export interface Listener {
 
 export class Listeners {
   private listeners: any = {};
-  addListener(method: string, listener: Listener) {
-    const arr = this.listeners[method];
-    if (!arr) {
-      this.listeners[method] = [listener];
+  addListener(event: string, listener: Listener) {
+    let l: Listener[] = this.listeners[event];
+    if (l === undefined) {
+      l = [listener];
+      this.listeners[event] = l;
     } else {
-      const idx = arr.indexOf(listener);
-      if (idx < 0) arr.push(listener);
+      const idx = l.indexOf(listener);
+      if (idx < 0) l.push(listener);
     }
   }
-  removeListener(method: string, listener: Listener) {
-    const arr = this.listeners[method];
-    if (arr) {
-      const idx = arr.indexOf(listener);
-      if (idx >= 0) arr.splice(idx, 1);
+  removeListener(event: string, listener: Listener) {
+    const l: Listener[] = this.listeners[event];
+    if (l) {
+      const idx = l.indexOf(listener);
+      if (idx >= 0) l.splice(idx, 1);
     }
   }
-  notify(method: string, ...params: any[]) {
-    const arr = this.listeners[method];
-    if (arr) {
-      arr.forEach((listener: Listener) => {
+  notify(event: string, ...params: any[]) {
+    const l: Listener[] = this.listeners[event];
+    if (l) {
+      l.forEach((listener) => {
         try {
           listener(params);
         } catch (e) {

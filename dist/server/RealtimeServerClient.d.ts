@@ -2,7 +2,7 @@
 import * as http from "http";
 import * as WebSocket from "ws";
 import { Handlers } from "../common/Handlers";
-import JsonRpc from "../common/JsonRpc";
+import { JsonRpc } from "../common/JsonRpc";
 import { Listeners } from "../common/Listeners";
 export default class RealtimeServerClient extends JsonRpc {
     socket: WebSocket;

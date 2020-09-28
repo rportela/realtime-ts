@@ -10,8 +10,8 @@ export declare class RealtimeServer {
     private server;
     private socket;
     private clients;
-    private listeners;
     private handlers;
+    private listeners;
     constructor(useHttps?: boolean);
     private registerClient;
     private unregisterClient;

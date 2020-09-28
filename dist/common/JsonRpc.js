@@ -1,6 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const JsonRpcPendingRequest_1 = require("./JsonRpcPendingRequest");
+exports.JsonRpcBus = exports.JsonRpc = exports.JsonRpcPendingRequest = void 0;
+const Handlers_1 = require("./Handlers");
+const Listeners_1 = require("./Listeners");
+/**
+ * This class is supposed to wrap a promise with it's resolve and reject methods and be stored.
+ * Once a remote RPC is completed, the corresponding methods should be called and the pending request removed from the store.
+ * @author Rodrigo Portela
+ */
+class JsonRpcPendingRequest {
+    constructor() {
+        this.jsonrpc = "2.0";
+        this.created_at = new Date();
+    }
+}
+exports.JsonRpcPendingRequest = JsonRpcPendingRequest;
 /**
  * Wraps all functionality of JSON RPC.
  * Handlers for standard method calls and listeners for remote notifications.
@@ -17,14 +31,9 @@ class JsonRpc {
          */
         this.receiveRequest = (request) => {
             if (request.id) {
-                try {
-                    const res = this.handleCall(request.method, request.params);
-                    const p = res.then ? res : Promise.resolve(res);
-                    p.then((result) => this.respondSuccess(request, result)).catch((err) => this.respondError(request, err));
-                }
-                catch (err) {
-                    this.respondError(request, err);
-                }
+                const res = this.handleCall(request.method, request.params);
+                const p = res.then ? res : Promise.resolve(res);
+                p.then((result) => this.respondSuccess(request, result)).catch((err) => this.respondError(request, err));
             }
             else {
                 try {
@@ -44,7 +53,7 @@ class JsonRpc {
      */
     call(method, ...params) {
         return new Promise((resolve, reject) => {
-            const req = new JsonRpcPendingRequest_1.default();
+            const req = new JsonRpcPendingRequest();
             req.id = JsonRpc.createId();
             req.method = method;
             req.resolve = resolve;
@@ -134,4 +143,36 @@ class JsonRpc {
         return new Date().getTime().toString(36) + Math.random().toString(36);
     }
 }
-exports.default = JsonRpc;
+exports.JsonRpc = JsonRpc;
+class JsonRpcBus extends JsonRpc {
+    constructor(handlers, listeners) {
+        super();
+        this.handlers = handlers || new Handlers_1.Handlers();
+        this.listeners = listeners || new Listeners_1.Listeners();
+    }
+    handleCall(method, params) {
+        return this.handlers.invoke(method, params);
+    }
+    handleNotification(method, params) {
+        return this.listeners.notify(method, params);
+    }
+    setHandler(method, handler) {
+        this.handlers.setHandler(method, handler);
+    }
+    removeHandler(method) {
+        this.handlers.removeHandler(method);
+    }
+    invokeLocalHandler(method, ...params) {
+        this.handlers.invoke(method, params);
+    }
+    addListener(event, listener) {
+        this.listeners.addListener(event, listener);
+    }
+    removeListener(event, listener) {
+        this.listeners.removeListener(event, listener);
+    }
+    notifyLocalListener(event, ...params) {
+        this.listeners.notify(event, params);
+    }
+}
+exports.JsonRpcBus = JsonRpcBus;

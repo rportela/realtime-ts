@@ -1,9 +1,9 @@
 import ObservableDb from "../common/ObservableDb";
-import { RealtimeClient } from "./RealtimeClient";
+import JsonRpcClient from "./JsonRpcClient";
 /**
  *
  */
-export default class RealtimeDbClient extends RealtimeClient {
+export default class RealtimeDbClient extends JsonRpcClient {
     private dbs;
     private resolveDbs;
     private rejectDbs;
@@ -13,16 +13,28 @@ export default class RealtimeDbClient extends RealtimeClient {
      * @param protocols
      */
     constructor(url?: string, protocols?: string[]);
+    private loadLocalSchema;
     /**
      * Creates an instance and attaches listeners for the client db.
      * @param schema
      */
     private createLocalDb;
+    private attachCollection;
     /**
      * Detaches event listeners from the client db instance.
      * @param db
      */
     private removeLocalDb;
+    private detachCollection;
+    /**
+     * Handler for the get schema call.
+     * @param params
+     */
+    private onRemoteSchema;
+    /**
+     * Event raised when a connection is established.
+     */
+    protected onConnect: () => void;
     /**
      * Event raised when a record is added to the remote database.
      * @param params
@@ -38,25 +50,6 @@ export default class RealtimeDbClient extends RealtimeClient {
      * @param params
      */
     private onRemoteDelete;
-    /**
-     * Handler for the select records call.
-     * @param params
-     */
-    private onRemoteSelect;
-    /**
-     * Handler for the get record call.
-     * @param params
-     */
-    private onRemoteGet;
-    /**
-     * Handler for the get schema call.
-     * @param params
-     */
-    private onRemoteSchema;
-    /**
-     * Event raised when a connection is established.
-     */
-    private onConnect;
     /**
      * Event raised when a record is added to the client db.
      * @param params

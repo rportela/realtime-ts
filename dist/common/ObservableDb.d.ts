@@ -1,30 +1,23 @@
-import { Db } from "./Db";
-import { DbCollectionDrop, DbEvent, DbRecordAdd, DbRecordDelete, DbRecordPut, DbDatabaseDrop } from "./DbEvents";
-import { DbFilter } from "./DbFilters";
-import { DbCollectionSchema, DbForEachParameters, DbKey, DbQueryParameters, DbSchema } from "./DbSchema";
-import { Listener } from "../common/Listeners";
+import { DatabaseCollectionImplementation, DatabaseImplementation, DatabaseSchema } from "./DatabaseDefinition";
+import { Listener } from "./Listeners";
+export declare enum ObservableDbEvent {
+    OBS_DB_DROP = "OBS_DB_DROP"
+}
 /**
  * This is an observable DB.
  * You and add listeners to any collection and be notified when records are added, put or deleted.
  */
-export default class ObservableDb implements Db {
+export default class ObservableDb implements DatabaseImplementation {
     private listeners;
     private db;
-    constructor(db: Db);
-    getSchema(): DbSchema;
+    private collections;
+    constructor(db: DatabaseImplementation);
     getName(): string;
-    getVersion(): number | undefined;
-    getCollectionSchema(collection: string): DbCollectionSchema;
-    dropDatabase(): Promise<DbDatabaseDrop>;
-    dropCollection(name: string): Promise<DbCollectionDrop>;
-    get<T>(collection: string, key: DbKey): Promise<T>;
-    add<T>(collection: string, record: T): Promise<DbRecordAdd<T>>;
-    put<T>(collection: string, record: T): Promise<DbRecordPut<T>>;
-    delete<T>(collection: string, key: DbKey): Promise<DbRecordDelete>;
-    count(collection: string, filter?: DbFilter): Promise<number>;
-    first<T>(params: DbQueryParameters): Promise<T>;
-    select<T>(params: DbQueryParameters): Promise<T[]>;
-    forEach<T>(params: DbForEachParameters<T>): Promise<any>;
-    addListener(event: DbEvent, listener: Listener): void;
-    removeListener(event: DbEvent, listener: Listener): void;
+    getVersion(): number;
+    getCollections(): Promise<DatabaseCollectionImplementation<any>[]>;
+    getCollection<T>(name: string): Promise<DatabaseCollectionImplementation<T>>;
+    drop(): Promise<unknown>;
+    addListener(event: ObservableDbEvent, listener: Listener): void;
+    removeListener(event: ObservableDbEvent, listener: Listener): void;
+    getSchema(): DatabaseSchema;
 }

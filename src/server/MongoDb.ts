@@ -1,33 +1,15 @@
+import { Db as mongodb, MongoClient } from "mongodb";
 import {
-  Cursor,
-  Db as mongodb,
-  InsertOneWriteOpResult,
-  MongoClient,
-  UpdateWriteOpResult,
-} from "mongodb";
-import { Db } from "../common/Db";
-import { DbFilter } from "../common/DbFilters";
-import {
-  DbCollectionSchema,
-  DbForEachParameters,
-  DbKey,
-  DbQueryParameters,
-  DbSchema,
-} from "../common/DbSchema";
-import { dbFilterToQuery } from "./MongoDialect";
-import {
-  DbDatabaseDrop,
-  DbCollectionDrop,
-  DbRecordAdd,
-  DbRecordPut,
-  DbRecordDelete,
-} from "../common/DbEvents";
+  DatabaseCollectionImplementation,
+  DatabaseImplementation,
+  DatabaseSchema,
+} from "../common/DatabaseDefinition";
 
-export default class MongoDb implements Db {
-  private schema: DbSchema;
+export default class MongoDb implements DatabaseImplementation {
+  private schema: DatabaseSchema;
   private open: Promise<mongodb>;
 
-  constructor(schema: DbSchema, url?: string) {
+  constructor(schema: DatabaseSchema, url?: string) {
     this.schema = schema;
     this.open = new Promise<mongodb>((resolve, reject) => {
       const client: MongoClient = new MongoClient(
@@ -43,7 +25,27 @@ export default class MongoDb implements Db {
       });
     });
   }
-  getSchema(): DbSchema {
+  getName(): string {
+    return this.schema.name;
+  }
+  getVersion(): number {
+    return this.schema.version;
+  }
+  getCollections(): Promise<DatabaseCollectionImplementation<any>[]> {
+    throw new Error("Method not implemented.");
+  }
+  getCollection<T>(name: string): Promise<DatabaseCollectionImplementation<T>> {
+    return this.getCollections().then((cols) =>
+      cols.find((col) => col.getName() === name)
+    );
+  }
+  drop(): Promise<unknown> {
+    return this.open.then((db) => db.dropDatabase());
+  }
+  getSchema() {
+    return this.schema;
+  }
+  /*getSchema(): DbSchema {
     return this.schema;
   }
   getName(): string {
@@ -174,5 +176,5 @@ export default class MongoDb implements Db {
     return this.createCursor<T>(params).then((cursor) =>
       cursor.forEach(params.iterator)
     );
-  }
+  }*/
 }

@@ -5,7 +5,7 @@ import { Handlers } from "../common/Handlers";
 import { Listeners } from "../common/Listeners";
 import {
   default as RealtimeServerClient,
-  default as RpcServerClient,
+  default as RpcServerClient
 } from "./RealtimeServerClient";
 import RealtimeServerEventType from "./RealtimeServerEventType";
 
@@ -20,8 +20,8 @@ export class RealtimeServer {
   private server: http.Server | https.Server;
   private socket: WebSocket.Server;
   private clients: RpcServerClient[] = [];
-  private listeners: Listeners = new Listeners();
   private handlers: Handlers = new Handlers();
+  private listeners: Listeners = new Listeners();
 
   constructor(useHttps?: boolean) {
     this.server =

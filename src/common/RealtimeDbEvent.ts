@@ -1,6 +1,6 @@
-import { DbFilter } from "./DbFilters";
-import { DbSort } from "./DbSorters";
-import { DbQueryParameters } from "./DbSchema";
+import { DbKey } from "./DatabaseDefinition";
+import { DatabaseFilter } from "./DatabaseFilters";
+import { DatabaseSortExpression } from "./DatabaseSorters";
 
 export enum RealtimeDbEvent {
   SCHEMA = "RTSDB_GET_SCHEMA",
@@ -9,16 +9,17 @@ export enum RealtimeDbEvent {
   SELECT = "RTSDB_SELECT",
 }
 
-export interface RealtimeDbNotifyParams {
+export interface RealTimeDbQuery {
   db: string;
   collection: string;
-  filter?: DbFilter;
+  filter?: DatabaseFilter;
+  sort?: DatabaseSortExpression;
+  offset?: number;
+  limit?: number;
 }
 
-export interface RealtimeDbSelectParams extends DbQueryParameters {
+export interface RealTimeDbGet {
   db: string;
-}
-
-export interface RealtimeDbGetParams extends DbQueryParameters {
-  db: string;
+  collection: string;
+  key: DbKey;
 }

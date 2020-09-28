@@ -10,8 +10,8 @@ const RealtimeServerClient_1 = require("./RealtimeServerClient");
 class RealtimeServer {
     constructor(useHttps) {
         this.clients = [];
-        this.listeners = new Listeners_1.Listeners();
         this.handlers = new Handlers_1.Handlers();
+        this.listeners = new Listeners_1.Listeners();
         this.registerClient = (ws, message) => {
             const client = new RealtimeServerClient_1.default(this.handlers, this.listeners, ws, message);
             ws.onclose = () => this.unregisterClient(client);

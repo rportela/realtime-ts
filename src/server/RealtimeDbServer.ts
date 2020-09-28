@@ -1,82 +1,105 @@
-import { Db } from "../common/Db";
 import {
-  DbRecordDelete,
-  DbEvent,
-  DbRecordAdd,
-  DbRecordPut,
-} from "../common/DbEvents";
-import { DbForEachParameters } from "../common/DbSchema";
+  DatabaseImplementation,
+  DatabaseSchema,
+} from "../common/DatabaseDefinition";
 import {
-  RealtimeDbEvent,
-  RealtimeDbNotifyParams,
-} from "../common/RealtimeDbEvent";
+  ObservableDbEvents,
+  ObservableDbKeyInfo,
+  ObservableDbRecordInfo,
+} from "../common/ObservableDbCollection";
+import { RealtimeDbEvent, RealTimeDbQuery } from "../common/RealtimeDbEvent";
 import { RealtimeServer } from "./RealtimeServer";
 import RealtimeServerClient from "./RealtimeServerClient";
 
 export default class RealtimeDbServer extends RealtimeServer {
-  private dbs: Db[];
+  private dbs: DatabaseImplementation[];
 
-  constructor(dbs: Db[], useHttps?: boolean) {
+  constructor(dbs: DatabaseImplementation[], useHttps?: boolean) {
     super(useHttps);
     this.dbs = dbs;
-    this.addListener(DbEvent.DB_RECORD_ADD, this.clientAddRecord);
-    this.addListener(DbEvent.DB_RECORD_PUT, this.clientPutRecord);
-    this.addListener(DbEvent.DB_RECORD_DELETE, this.clientDeleteRecord);
+
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_ADD,
+      this.clientAddRecord
+    );
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_PUT,
+      this.clientPutRecord
+    );
+    this.addListener(
+      ObservableDbEvents.OBS_DB_COLLECTION_DEL,
+      this.clientDeleteRecord
+    );
     this.setHandler(RealtimeDbEvent.SCHEMA, this.getSchema);
     this.setHandler(RealtimeDbEvent.NOTIFY, this.notifyClient);
   }
 
+  getDb(name: string): DatabaseImplementation {
+    return this.dbs.find((d) => d.getName() === name);
+  }
+  getSchema(): DatabaseSchema[] {
+    return this.dbs.map((db) => db.getSchema());
+  }
+
   private clientAddRecord = (
     client: RealtimeServerClient,
-    params: DbRecordAdd<any>
+    params: ObservableDbRecordInfo
   ) => {
-    this.notifyClients(DbEvent.DB_RECORD_ADD, params, client);
-    this.getDb(params.db).add(params.collection, params.record);
+    this.notifyClients(
+      ObservableDbEvents.OBS_DB_COLLECTION_ADD,
+      params,
+      client
+    );
+    this.getDb(params.db)
+      .getCollection(params.collection)
+      .then((col) => col.add(params.record));
   };
 
   private clientPutRecord = (
     client: RealtimeServerClient,
-    params: DbRecordPut<any>
+    params: ObservableDbRecordInfo
   ) => {
-    this.notifyClients(DbEvent.DB_RECORD_PUT, params, client);
-    this.getDb(params.db).put(params.collection, params.record);
+    this.notifyClients(
+      ObservableDbEvents.OBS_DB_COLLECTION_PUT,
+      params,
+      client
+    );
+    this.getDb(params.db)
+      .getCollection(params.collection)
+      .then((col) => col.put(params.record));
   };
 
   private clientDeleteRecord = (
     client: RealtimeServerClient,
-    params: DbRecordDelete
+    params: ObservableDbKeyInfo
   ) => {
-    this.notifyClients(DbEvent.DB_RECORD_DELETE, params, client);
-    this.getDb(params.db).delete(params.collection, params.key);
+    this.notifyClients(
+      ObservableDbEvents.OBS_DB_COLLECTION_DEL,
+      params,
+      client
+    );
+    this.getDb(params.db)
+      .getCollection(params.collection)
+      .then((col) => col.delete(params.key));
   };
 
   private notifyClient = (
     client: RealtimeServerClient,
-    params: RealtimeDbNotifyParams
-  ) => {
-    const db = this.getDb(params.db);
-    const keyPath = db.getCollectionSchema(params.collection).keyPath;
-    db.forEach({
-      collection: params.collection,
-      where: params.filter,
-      iterator: (record: any) => {
-        const message: DbRecordPut<any> = {
-          db: params.db,
-          collection: params.collection,
-          record: record,
-          key: record[keyPath],
-          when: record["updated_at"],
-        };
-        client.notify(DbEvent.DB_RECORD_PUT, message);
-      },
-    } as DbForEachParameters<any>);
-  };
-
-  getDb(name: string): Db {
-    return this.dbs.find((d) => d.getName() === name);
-  }
-
-  getSchema = () => {
-    return this.dbs.map((d) => d.getSchema());
-  };
+    params: RealTimeDbQuery
+  ) =>
+    this.getDb(params.db)
+      .getCollection(params.collection)
+      .then((col) =>
+        col.query(params.filter, params.sort, params.offset, params.limit)
+      )
+      .then((rows) =>
+        rows.forEach((row) =>
+          client.notify(ObservableDbEvents.OBS_DB_COLLECTION_PUT, {
+            db: params.db,
+            collection: params.collection,
+            record: row,
+            key: undefined,
+          } as ObservableDbRecordInfo)
+        )
+      );
 }

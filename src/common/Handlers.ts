@@ -1,7 +1,13 @@
+/**
+ *
+ */
 export interface Handler {
   (...params: any[]): any;
 }
 
+/**
+ *
+ */
 export class Handlers {
   private handlers: any = {};
   setHandler(method: string, handler: Handler) {

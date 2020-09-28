@@ -3,7 +3,7 @@ export interface Listener {
 }
 export declare class Listeners {
     private listeners;
-    addListener(method: string, listener: Listener): void;
-    removeListener(method: string, listener: Listener): void;
-    notify(method: string, ...params: any[]): void;
+    addListener(event: string, listener: Listener): void;
+    removeListener(event: string, listener: Listener): void;
+    notify(event: string, ...params: any[]): void;
 }

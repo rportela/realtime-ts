@@ -5,29 +5,30 @@ class Listeners {
     constructor() {
         this.listeners = {};
     }
-    addListener(method, listener) {
-        const arr = this.listeners[method];
-        if (!arr) {
-            this.listeners[method] = [listener];
+    addListener(event, listener) {
+        let l = this.listeners[event];
+        if (l === undefined) {
+            l = [listener];
+            this.listeners[event] = l;
         }
         else {
-            const idx = arr.indexOf(listener);
+            const idx = l.indexOf(listener);
             if (idx < 0)
-                arr.push(listener);
+                l.push(listener);
         }
     }
-    removeListener(method, listener) {
-        const arr = this.listeners[method];
-        if (arr) {
-            const idx = arr.indexOf(listener);
+    removeListener(event, listener) {
+        const l = this.listeners[event];
+        if (l) {
+            const idx = l.indexOf(listener);
             if (idx >= 0)
-                arr.splice(idx, 1);
+                l.splice(idx, 1);
         }
     }
-    notify(method, ...params) {
-        const arr = this.listeners[method];
-        if (arr) {
-            arr.forEach((listener) => {
+    notify(event, ...params) {
+        const l = this.listeners[event];
+        if (l) {
+            l.forEach((listener) => {
                 try {
                     listener(params);
                 }

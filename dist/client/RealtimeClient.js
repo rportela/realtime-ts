@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RealtimeClient = exports.RealtimeClientEvent = void 0;
-const JsonRpc_1 = require("../common/JsonRpc");
-const Handlers_1 = require("../common/Handlers");
 const Listeners_1 = require("../common/Listeners");
 /**
  * The most basic realtime client events.
@@ -12,25 +10,22 @@ var RealtimeClientEvent;
     RealtimeClientEvent["CONNECT"] = "CONNECT";
     RealtimeClientEvent["ERROR"] = "ERROR";
     RealtimeClientEvent["DISCONNECT"] = "DISCONNECT";
+    RealtimeClientEvent["MESSAGE"] = "MESSAGE";
 })(RealtimeClientEvent = exports.RealtimeClientEvent || (exports.RealtimeClientEvent = {}));
 /**
  * This class is responsible for handling messages of a websocket on the client side.
  * It exposes handlers for method calls and listeners for notifications.
  * @author Rodrigo Portela <rodrigo.portela@gmail.com>
  */
-class RealtimeClient extends JsonRpc_1.default {
+class RealtimeClient {
     /**
      * Creates a new realtime client.
      * @param url
      * @param protocols
      */
     constructor(url, protocols) {
-        super();
         this.reconnectHandler = 0;
         this.connected = false;
-        this.buffer = [];
-        this.handlers = new Handlers_1.Handlers();
-        this.listeners = new Listeners_1.Listeners();
         this.reconnectTimeout = 10000;
         /**
          * Connects to a remote URL using protocols and binds events to the socket.
@@ -51,12 +46,6 @@ class RealtimeClient extends JsonRpc_1.default {
          */
         this.onOpen = (ev) => {
             this.connected = true;
-            // flush the buffer
-            if (this.buffer.length > 0) {
-                for (const msg of this.buffer)
-                    this.socket.send(msg);
-                this.buffer = [];
-            }
             // clear any reconnect timeout;
             if (this.reconnectHandler) {
                 window.clearTimeout(this.reconnectHandler);
@@ -93,10 +82,11 @@ class RealtimeClient extends JsonRpc_1.default {
          * @param msg
          */
         this.onMessage = (msg) => {
-            this.receiveJson(msg.data);
+            this.listeners.notify(RealtimeClientEvent.MESSAGE, msg.data);
         };
         this.url = url;
         this.protocols = protocols;
+        this.listeners = new Listeners_1.Listeners();
         if (navigator.onLine)
             this.connect();
         window.addEventListener("online", this.connect);
@@ -114,31 +104,11 @@ class RealtimeClient extends JsonRpc_1.default {
         }
     }
     /**
-     * Either sends the message if connected.
-     * Or stores it in a buffer for sending when connected.
-     * @param json
+     * Transmits data using the WebSocket connection. data can be a string, a Blob, an ArrayBuffer, or an ArrayBufferView.
+     * @param data
      */
-    sendJson(json) {
-        if (this.connected)
-            this.socket.send(json);
-        else
-            this.buffer.push(json);
-    }
-    /**
-     * Handles a remote procedure call by invoking a handler out of the Handlers.
-     * @param method
-     * @param params
-     */
-    handleCall(method, params) {
-        return this.handlers.invoke(method, params);
-    }
-    /**
-     * Handles a notification by notifying all listeners.
-     * @param method
-     * @param params
-     */
-    handleNotification(method, params) {
-        this.listeners.notify(method, params);
+    send(data) {
+        this.socket.send(data);
     }
     /**
      * Tells if the socket is connected or not.
@@ -161,21 +131,6 @@ class RealtimeClient extends JsonRpc_1.default {
      */
     removeListener(method, listener) {
         this.listeners.removeListener(method, listener);
-    }
-    /**
-     * Sets a handler for a remote method call.
-     * @param method
-     * @param handler
-     */
-    setHandler(method, handler) {
-        this.handlers.setHandler(method, handler);
-    }
-    /**
-     * Deletes the handler of a remote method call.
-     * @param method
-     */
-    removeHandler(method) {
-        this.handlers.removeHandler(method);
     }
 }
 exports.RealtimeClient = RealtimeClient;

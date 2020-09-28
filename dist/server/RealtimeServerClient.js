@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const JsonRpc_1 = require("../common/JsonRpc");
-class RealtimeServerClient extends JsonRpc_1.default {
+class RealtimeServerClient extends JsonRpc_1.JsonRpc {
     constructor(handlers, listeners, socket, info) {
         super();
         this.onMessage = (event) => {

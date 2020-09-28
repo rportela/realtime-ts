@@ -1,5 +1,3 @@
-import JsonRpc from "../common/JsonRpc";
-import { Handlers, Handler } from "../common/Handlers";
 import { Listener, Listeners } from "../common/Listeners";
 
 /**
@@ -9,6 +7,7 @@ export enum RealtimeClientEvent {
   CONNECT = "CONNECT",
   ERROR = "ERROR",
   DISCONNECT = "DISCONNECT",
+  MESSAGE = "MESSAGE",
 }
 
 /**
@@ -16,13 +15,11 @@ export enum RealtimeClientEvent {
  * It exposes handlers for method calls and listeners for notifications.
  * @author Rodrigo Portela <rodrigo.portela@gmail.com>
  */
-export class RealtimeClient extends JsonRpc {
+export class RealtimeClient {
   private socket: WebSocket;
   private reconnectHandler: number = 0;
   private connected: boolean = false;
-  private buffer: string[] = [];
-  private handlers: Handlers = new Handlers();
-  private listeners: Listeners = new Listeners();
+  private listeners: Listeners;
   reconnectTimeout: number = 10000;
   url: string;
   protocols?: string | string[];
@@ -33,9 +30,9 @@ export class RealtimeClient extends JsonRpc {
    * @param protocols
    */
   constructor(url: string, protocols?: string | string[]) {
-    super();
     this.url = url;
     this.protocols = protocols;
+    this.listeners = new Listeners();
     if (navigator.onLine) this.connect();
     window.addEventListener("online", this.connect);
   }
@@ -72,11 +69,6 @@ export class RealtimeClient extends JsonRpc {
    */
   private onOpen = (ev: Event) => {
     this.connected = true;
-    // flush the buffer
-    if (this.buffer.length > 0) {
-      for (const msg of this.buffer) this.socket.send(msg);
-      this.buffer = [];
-    }
     // clear any reconnect timeout;
     if (this.reconnectHandler) {
       window.clearTimeout(this.reconnectHandler);
@@ -126,37 +118,18 @@ export class RealtimeClient extends JsonRpc {
    * @param msg
    */
   private onMessage = (msg: MessageEvent) => {
-    this.receiveJson(msg.data);
+    this.listeners.notify(RealtimeClientEvent.MESSAGE, msg.data);
   };
 
   /**
-   * Either sends the message if connected.
-   * Or stores it in a buffer for sending when connected.
-   * @param json
+   * Transmits data using the WebSocket connection. data can be a string, a Blob, an ArrayBuffer, or an ArrayBufferView.
+   * @param data
    */
-  protected sendJson(json: string) {
-    if (this.connected) this.socket.send(json);
-    else this.buffer.push(json);
+  send(
+    data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView
+  ) {
+    this.socket.send(data);
   }
-
-  /**
-   * Handles a remote procedure call by invoking a handler out of the Handlers.
-   * @param method
-   * @param params
-   */
-  protected handleCall(method: string, params: any): any | Promise<any> {
-    return this.handlers.invoke(method, params);
-  }
-
-  /**
-   * Handles a notification by notifying all listeners.
-   * @param method
-   * @param params
-   */
-  protected handleNotification(method: string, params: any): void {
-    this.listeners.notify(method, params);
-  }
-
   /**
    * Tells if the socket is connected or not.
    */
@@ -180,22 +153,5 @@ export class RealtimeClient extends JsonRpc {
    */
   removeListener(method: string, listener: Listener) {
     this.listeners.removeListener(method, listener);
-  }
-
-  /**
-   * Sets a handler for a remote method call.
-   * @param method
-   * @param handler
-   */
-  setHandler(method: string, handler: Handler) {
-    this.handlers.setHandler(method, handler);
-  }
-
-  /**
-   * Deletes the handler of a remote method call.
-   * @param method
-   */
-  removeHandler(method: string) {
-    this.handlers.removeHandler(method);
   }
 }

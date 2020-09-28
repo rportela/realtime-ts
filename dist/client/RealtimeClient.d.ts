@@ -1,5 +1,3 @@
-import JsonRpc from "../common/JsonRpc";
-import { Handler } from "../common/Handlers";
 import { Listener } from "../common/Listeners";
 /**
  * The most basic realtime client events.
@@ -7,19 +5,18 @@ import { Listener } from "../common/Listeners";
 export declare enum RealtimeClientEvent {
     CONNECT = "CONNECT",
     ERROR = "ERROR",
-    DISCONNECT = "DISCONNECT"
+    DISCONNECT = "DISCONNECT",
+    MESSAGE = "MESSAGE"
 }
 /**
  * This class is responsible for handling messages of a websocket on the client side.
  * It exposes handlers for method calls and listeners for notifications.
  * @author Rodrigo Portela <rodrigo.portela@gmail.com>
  */
-export declare class RealtimeClient extends JsonRpc {
+export declare class RealtimeClient {
     private socket;
     private reconnectHandler;
     private connected;
-    private buffer;
-    private handlers;
     private listeners;
     reconnectTimeout: number;
     url: string;
@@ -60,23 +57,10 @@ export declare class RealtimeClient extends JsonRpc {
      */
     private onMessage;
     /**
-     * Either sends the message if connected.
-     * Or stores it in a buffer for sending when connected.
-     * @param json
+     * Transmits data using the WebSocket connection. data can be a string, a Blob, an ArrayBuffer, or an ArrayBufferView.
+     * @param data
      */
-    protected sendJson(json: string): void;
-    /**
-     * Handles a remote procedure call by invoking a handler out of the Handlers.
-     * @param method
-     * @param params
-     */
-    protected handleCall(method: string, params: any): any | Promise<any>;
-    /**
-     * Handles a notification by notifying all listeners.
-     * @param method
-     * @param params
-     */
-    protected handleNotification(method: string, params: any): void;
+    send(data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView): void;
     /**
      * Tells if the socket is connected or not.
      */
@@ -93,15 +77,4 @@ export declare class RealtimeClient extends JsonRpc {
      * @param listener
      */
     removeListener(method: string, listener: Listener): void;
-    /**
-     * Sets a handler for a remote method call.
-     * @param method
-     * @param handler
-     */
-    setHandler(method: string, handler: Handler): void;
-    /**
-     * Deletes the handler of a remote method call.
-     * @param method
-     */
-    removeHandler(method: string): void;
 }
