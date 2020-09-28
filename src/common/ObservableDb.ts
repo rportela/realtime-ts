@@ -1,7 +1,6 @@
 import {
-  DatabaseCollectionImplementation,
   DatabaseImplementation,
-  DatabaseSchema,
+  DatabaseSchema
 } from "./DatabaseDefinition";
 import { Listener, Listeners } from "./Listeners";
 import { ObservableDbCollection } from "./ObservableDbCollection";
@@ -17,7 +16,7 @@ export enum ObservableDbEvent {
 export default class ObservableDb implements DatabaseImplementation {
   private listeners: Listeners;
   private db: DatabaseImplementation;
-  private collections: Promise<DatabaseCollectionImplementation<any>[]>;
+  private collections: Promise<ObservableDbCollection<any>[]>;
 
   constructor(db: DatabaseImplementation) {
     this.db = db;
@@ -33,10 +32,10 @@ export default class ObservableDb implements DatabaseImplementation {
   getVersion(): number {
     return this.db.getVersion();
   }
-  getCollections(): Promise<DatabaseCollectionImplementation<any>[]> {
+  getCollections(): Promise<ObservableDbCollection<any>[]> {
     return this.collections;
   }
-  getCollection<T>(name: string): Promise<DatabaseCollectionImplementation<T>> {
+  getCollection<T>(name: string): Promise<ObservableDbCollection<T>> {
     return this.getCollections().then((cols) =>
       cols.find((col) => col.getName() === name)
     );

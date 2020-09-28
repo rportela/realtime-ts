@@ -1,5 +1,6 @@
-import { DatabaseCollectionImplementation, DatabaseImplementation, DatabaseSchema } from "./DatabaseDefinition";
+import { DatabaseImplementation, DatabaseSchema } from "./DatabaseDefinition";
 import { Listener } from "./Listeners";
+import { ObservableDbCollection } from "./ObservableDbCollection";
 export declare enum ObservableDbEvent {
     OBS_DB_DROP = "OBS_DB_DROP"
 }
@@ -14,8 +15,8 @@ export default class ObservableDb implements DatabaseImplementation {
     constructor(db: DatabaseImplementation);
     getName(): string;
     getVersion(): number;
-    getCollections(): Promise<DatabaseCollectionImplementation<any>[]>;
-    getCollection<T>(name: string): Promise<DatabaseCollectionImplementation<T>>;
+    getCollections(): Promise<ObservableDbCollection<any>[]>;
+    getCollection<T>(name: string): Promise<ObservableDbCollection<T>>;
     drop(): Promise<unknown>;
     addListener(event: ObservableDbEvent, listener: Listener): void;
     removeListener(event: ObservableDbEvent, listener: Listener): void;
