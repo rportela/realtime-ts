@@ -5,7 +5,8 @@ import { Listener } from "./Listeners";
 export declare enum ObservableDbEvents {
     OBS_DB_COLLECTION_ADD = "OBS_DB_COLLECTION_ADD",
     OBS_DB_COLLECTION_PUT = "OBS_DB_COLLECTION_PUT",
-    OBS_DB_COLLECTION_DEL = "OBS_DB_COLLECTION_DEL"
+    OBS_DB_COLLECTION_DEL = "OBS_DB_COLLECTION_DEL",
+    OBS_DB_COLLECTION_CLEAR = "OBS_DB_COLLECTION_CLEAR"
 }
 export interface ObservableDbKeyInfo {
     db: string;
@@ -24,6 +25,7 @@ export declare class ObservableDbCollection<T> implements DatabaseCollectionImpl
     private notifyPut;
     private notifyDel;
     constructor(collection: DatabaseCollectionImplementation<T>);
+    clear(): Promise<unknown>;
     getDatabaseName(): string;
     getDatabaseVersion(): number;
     getName(): string;

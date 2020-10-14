@@ -52,5 +52,8 @@ class MongoDbCollection {
     query(filter, sort, offset, limit) {
         throw new Error("Method not implemented.");
     }
+    clear() {
+        throw new Error("Method not implemented.");
+    }
 }
 exports.default = MongoDbCollection;

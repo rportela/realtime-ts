@@ -22,4 +22,5 @@ export default class BrowserDbCollection<T> implements DatabaseCollectionImpleme
     forEach(fn: (record: T) => void): Promise<unknown>;
     count(): Promise<number>;
     query(filter?: DatabaseFilter, sort?: DatabaseSortExpression, offset?: number, limit?: number): Promise<T[]>;
+    clear(): Promise<unknown>;
 }

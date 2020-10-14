@@ -73,6 +73,7 @@ export interface DatabaseCollectionImplementation<T> {
     offset?: number,
     limit?: number
   ): Promise<T[]>;
+  clear(): Promise<unknown>;
 }
 
 /**

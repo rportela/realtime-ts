@@ -20,4 +20,5 @@ export default class MongoDbCollection<T> implements DatabaseCollectionImplement
     forEach(fn: (record: T) => void): Promise<unknown>;
     count(): Promise<number>;
     query(filter: DatabaseFilter, sort?: DatabaseSortExpression, offset?: number, limit?: number): Promise<T[]>;
+    clear(): Promise<unknown>;
 }

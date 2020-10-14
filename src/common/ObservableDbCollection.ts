@@ -7,6 +7,7 @@ export enum ObservableDbEvents {
   OBS_DB_COLLECTION_ADD = "OBS_DB_COLLECTION_ADD",
   OBS_DB_COLLECTION_PUT = "OBS_DB_COLLECTION_PUT",
   OBS_DB_COLLECTION_DEL = "OBS_DB_COLLECTION_DEL",
+  OBS_DB_COLLECTION_CLEAR = "OBS_DB_COLLECTION_CLEAR",
 }
 
 export interface ObservableDbKeyInfo {
@@ -64,6 +65,17 @@ export class ObservableDbCollection<T>
   constructor(collection: DatabaseCollectionImplementation<T>) {
     this.collection = collection;
     this.listeners = new Listeners();
+  }
+
+  clear(): Promise<unknown> {
+    return this.collection.clear().then((result) => {
+      this.listeners.notify(ObservableDbEvents.OBS_DB_COLLECTION_CLEAR, {
+        db: this.collection.getDatabaseName(),
+        version: this.collection.getDatabaseVersion(),
+        collection: this.collection.getName(),
+      });
+      return result;
+    });
   }
 
   getDatabaseName() {

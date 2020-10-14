@@ -183,5 +183,15 @@ class BrowserDbCollection {
                 return records;
         });
     }
+    clear() {
+        return new Promise((resolve, reject) => {
+            const req = this.db
+                .transaction(this.schema.name, "readwrite")
+                .objectStore(this.schema.name)
+                .clear();
+            req.onerror = () => reject(req.error);
+            req.onsuccess = () => resolve(req.result);
+        });
+    }
 }
 exports.default = BrowserDbCollection;

@@ -62,6 +62,7 @@ export interface DatabaseCollectionImplementation<T> {
     forEach(fn: (record: T) => void): Promise<unknown>;
     count(): Promise<number>;
     query(filter: DatabaseFilter, sort?: DatabaseSortExpression, offset?: number, limit?: number): Promise<T[]>;
+    clear(): Promise<unknown>;
 }
 /**
  * This defines the implementation of a database.

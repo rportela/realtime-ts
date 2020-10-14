@@ -8,7 +8,6 @@ import { DatabaseSortExpression } from "../common/DatabaseSorters";
 
 export default class MongoDbCollection<T>
   implements DatabaseCollectionImplementation<T> {
-  
   private schema: DatabaseCollectionSchema;
 
   getDatabaseName(): string {
@@ -65,6 +64,10 @@ export default class MongoDbCollection<T>
     offset?: number,
     limit?: number
   ): Promise<T[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  clear(): Promise<unknown> {
     throw new Error("Method not implemented.");
   }
 }
